@@ -20,7 +20,7 @@ struct PixelShaderInput
 	float3 uv : UV;
 };
 
-// Simple shader to do vertex processing on the GPU.
+//// Simple shader to do vertex processing on the GPU.
 PixelShaderInput main(VertexShaderInput input)
 {
 	PixelShaderInput output;

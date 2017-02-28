@@ -123,20 +123,20 @@ void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const
 	}
 	if (m_kbuttons['X'])
 	{
-		XMMATRIX translation = XMMatrixTranslation( 0.0f, -moveSpd * delta_time, 0.0f);
+		XMMATRIX translation = XMMatrixTranslation(0.0f, -moveSpd * delta_time, 0.0f);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&m_camera);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&m_camera, result);
 	}
 	if (m_kbuttons[VK_SPACE])
 	{
-		XMMATRIX translation = XMMatrixTranslation( 0.0f, moveSpd * delta_time, 0.0f);
+		XMMATRIX translation = XMMatrixTranslation(0.0f, moveSpd * delta_time, 0.0f);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&m_camera);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&m_camera, result);
 	}
 
-	if (m_currMousePos) 
+	if (m_currMousePos)
 	{
 		if (m_currMousePos->Properties->IsRightButtonPressed && m_prevMousePos)
 		{
@@ -165,6 +165,58 @@ void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const
 		m_prevMousePos = m_currMousePos;
 	}
 
+
+}
+
+void DX11UWA::Sample3DSceneRenderer::CreatePlane()
+{
+	using namespace DirectX;
+	RenderObject obj;
+
+	//DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &m_vertexShader));
+
+	/*static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "UV", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	}*/;
+
+	//DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateInputLayout(vertexDesc, ARRAYSIZE(vertexDesc), &fileData[0], fileData.size(), &m_inputLayout));
+
+	//ORDER MATTERS.
+	obj.verts.push_back({ XMFLOAT3(-1.0f,0,1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) });
+	obj.verts.push_back({ XMFLOAT3(1.0f, 0,1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f) });
+	obj.verts.push_back({ XMFLOAT3(1.0f, 0,-1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	obj.verts.push_back({ XMFLOAT3(-1.0f,0,-1.0f), XMFLOAT3(0.0f, 1.0f, 1.0f) });
+
+
+	D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
+	vertexBufferData.pSysMem = &obj.verts[0];
+	vertexBufferData.SysMemPitch = 0;
+	vertexBufferData.SysMemSlicePitch = 0;
+	CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(DX11UWA::VertexPositionColor) * obj.verts.size(), D3D11_BIND_VERTEX_BUFFER);
+	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &obj.vertexBuffer.p));
+
+
+	//IF ABOVE ORDER IS CORRECT, THIS IS CLOCKWISE PLANE.
+	obj.triangles.push_back(0);
+	obj.triangles.push_back(1);
+	obj.triangles.push_back(2);
+
+	obj.triangles.push_back(3);
+	obj.triangles.push_back(0);
+	obj.triangles.push_back(2);
+	//obj.triangles.push_back(Triangle(0, 2, 3));
+
+
+	D3D11_SUBRESOURCE_DATA indexBufferData = { 0 };
+	indexBufferData.pSysMem = &obj.triangles[0];
+	indexBufferData.SysMemPitch = 0;
+	indexBufferData.SysMemSlicePitch = 0;
+	CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * obj.triangles.size(), D3D11_BIND_INDEX_BUFFER);
+	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &obj.indexBuffer.p));
+
+	renderObjects.push_back(obj);
 
 }
 
@@ -236,6 +288,63 @@ void Sample3DSceneRenderer::Render(void)
 	context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 	// Draw the objects.
 	context->DrawIndexed(m_indexCount, 0, 0);
+
+
+	/*
+	//Plane
+	// Prepare the constant buffer to send it to the graphics device.
+	context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+	// Each vertex is one instance of the VertexPositionColor struct.
+	stride = sizeof(VertexPositionColor);
+	offset = 0;
+	context->IASetVertexBuffers(0, 1, &renderObjects[0].vertexBuffer.p, &stride, &offset);
+	// Each index is one 16-bit unsigned integer (short).
+	context->IASetIndexBuffer(renderObjects[0].indexBuffer, DXGI_FORMAT_R16_UINT, 0);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->IASetInputLayout(m_inputLayout.Get());
+	// Attach our vertex shader.
+	context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
+	// Send the constant buffer to the graphics device.
+	context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+	// Attach our pixel shader.
+	context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+	// Draw the objects.
+	context->DrawIndexed(6, 0, 0);
+	*/
+
+
+	
+	//Draw my custom objects
+	for (int i = 0; i < renderObjects.size(); i++) {
+		// Prepare the constant buffer to send it to the graphics device.
+		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+		// Each vertex is one instance of the VertexPositionColor struct.
+		stride = sizeof(VertexPositionColor);
+		offset = 0;
+		context->IASetVertexBuffers(0, 1, &(renderObjects[i].vertexBuffer.p), &stride, &offset);
+
+		// Each index is one 16-bit unsigned integer (short).
+		context->IASetIndexBuffer((renderObjects[i].indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
+
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		context->IASetInputLayout(m_inputLayout.Get());
+
+		// Attach our vertex shader.
+		context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
+
+
+		// Send the constant buffer to the graphics device.
+		context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+
+
+		// Attach our pixel shader.
+		context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+
+		// Draw the objects. Number of Tri's
+		context->DrawIndexed(renderObjects[i].triangles.size()*3, 0, 0);
+	}
+	
 }
 
 void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
@@ -277,10 +386,10 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 			{XMFLOAT3(-0.5f, -0.5f,  0.5f), XMFLOAT3(0.0f, 0.0f, 1.0f)},
 			{XMFLOAT3(-0.5f,  0.5f, -0.5f), XMFLOAT3(0.0f, 1.0f, 0.0f)},
 			{XMFLOAT3(-0.5f,  0.5f,  0.5f), XMFLOAT3(0.0f, 1.0f, 1.0f)},
-			{XMFLOAT3( 0.5f, -0.5f, -0.5f), XMFLOAT3(1.0f, 0.0f, 0.0f)},
-			{XMFLOAT3( 0.5f, -0.5f,  0.5f), XMFLOAT3(1.0f, 0.0f, 1.0f)},
-			{XMFLOAT3( 0.5f,  0.5f, -0.5f), XMFLOAT3(1.0f, 1.0f, 0.0f)},
-			{XMFLOAT3( 0.5f,  0.5f,  0.5f), XMFLOAT3(1.0f, 1.0f, 1.0f)},
+			{XMFLOAT3(0.5f, -0.5f, -0.5f), XMFLOAT3(1.0f, 0.0f, 0.0f)},
+			{XMFLOAT3(0.5f, -0.5f,  0.5f), XMFLOAT3(1.0f, 0.0f, 1.0f)},
+			{XMFLOAT3(0.5f,  0.5f, -0.5f), XMFLOAT3(1.0f, 1.0f, 0.0f)},
+			{XMFLOAT3(0.5f,  0.5f,  0.5f), XMFLOAT3(1.0f, 1.0f, 1.0f)},
 		};
 
 		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
@@ -324,7 +433,10 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		indexBufferData.SysMemSlicePitch = 0;
 		CD3D11_BUFFER_DESC indexBufferDesc(sizeof(cubeIndices), D3D11_BIND_INDEX_BUFFER);
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &m_indexBuffer));
+
 	});
+
+	CreatePlane();
 
 	// Once the cube is loaded, the object is ready to be rendered.
 	createCubeTask.then([this]()

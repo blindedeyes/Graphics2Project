@@ -4,6 +4,8 @@
 #include "ShaderStructures.h"
 #include "..\Common\StepTimer.h"
 
+//Render object
+#include "RenderObject.h"
 
 namespace DX11UWA
 {
@@ -31,8 +33,10 @@ namespace DX11UWA
 	private:
 		void Rotate(float radians);
 		void UpdateCamera(DX::StepTimer const& timer, float const moveSpd, float const rotSpd);
-
+		void CreatePlane();
 	private:
+		//Vector of all objects
+		std::vector<RenderObject> renderObjects;
 		// Cached pointer to device resources.
 		std::shared_ptr<DX::DeviceResources> m_deviceResources;
 
