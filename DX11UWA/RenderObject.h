@@ -12,11 +12,10 @@
 class RenderObject
 {
 public:
-	std::vector<DX11UWA::VertexPositionColor> verts;
-	std::vector<DirectX::XMFLOAT3> Normals;
-	std::vector<DirectX::XMFLOAT2> UV;
+	
+	std::vector<DX11UWA::VertexPositionUVNormal> vertexs;
+	std::vector<unsigned short> indexes;
 
-	std::vector<unsigned short> triangles;
 
 	D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
 	D3D11_SUBRESOURCE_DATA indexBufferData = { 0 };
@@ -30,7 +29,6 @@ public:
 	CComPtr<ID3D11Buffer> constBuffer;
 	CComPtr<ID3D11Buffer> vertexBuffer;
 
-	CComPtr<ID3D11InputLayout> inputLayout;
 
 	void (*UpdateObject)(void);
 

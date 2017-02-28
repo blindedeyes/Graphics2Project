@@ -174,48 +174,78 @@ void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 	RenderObject obj;
 
 	//ORDER MATTERS.
-	obj.verts.push_back({ XMFLOAT3(-1.0f,0,1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) });
-	obj.verts.push_back({ XMFLOAT3(1.0f, 0,1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) });
-	obj.verts.push_back({ XMFLOAT3(1.0f, 0,-1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) });
-	obj.verts.push_back({ XMFLOAT3(-1.0f,0,-1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) });
+	obj.vertexs.push_back({ XMFLOAT3(-1.0f,0,1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) , XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	obj.vertexs.push_back({ XMFLOAT3(1.0f, 0,1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) , XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	obj.vertexs.push_back({ XMFLOAT3(1.0f, 0,-1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	obj.vertexs.push_back({ XMFLOAT3(-1.0f,0,-1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
 
-
-	D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
-	vertexBufferData.pSysMem = &obj.verts[0];
-	vertexBufferData.SysMemPitch = 0;
-	vertexBufferData.SysMemSlicePitch = 0;
-	CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(DX11UWA::VertexPositionColor) * obj.verts.size(), D3D11_BIND_VERTEX_BUFFER);
-	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &obj.vertexBuffer.p));
-
+	obj.SetupVertexBuffers(m_deviceResources.get());
 
 	//IF ABOVE ORDER IS CORRECT, THIS IS CLOCKWISE PLANE.
-	obj.triangles.push_back(0);
-	obj.triangles.push_back(1);
-	obj.triangles.push_back(2);
+	obj.indexes.push_back(0);
+	obj.indexes.push_back(1);
+	obj.indexes.push_back(2);
 
-	obj.triangles.push_back(3);
-	obj.triangles.push_back(0);
-	obj.triangles.push_back(2);
-	//obj.triangles.push_back(Triangle(0, 2, 3));
+	obj.indexes.push_back(3);
+	obj.indexes.push_back(0);
+	obj.indexes.push_back(2);
 
+	obj.SetupIndexBuffer(m_deviceResources.get());
 
-	D3D11_SUBRESOURCE_DATA indexBufferData = { 0 };
-	indexBufferData.pSysMem = &obj.triangles[0];
-	indexBufferData.SysMemPitch = 0;
-	indexBufferData.SysMemSlicePitch = 0;
-	CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * obj.triangles.size(), D3D11_BIND_INDEX_BUFFER);
-	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &obj.indexBuffer.p));
-	obj.Position._42 = -.5f;
+	//obj.Position._42 = -.5f;
 	renderObjects.push_back(obj);
 
 }
 
 void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
+
+	//objLayout
+	// Load shaders asynchronously.
+	auto loadVSTask = DX::ReadDataAsync(L"TempVertexShader.cso");
+	auto loadPSTask = DX::ReadDataAsync(L"TempPixelShader.cso");
+
+	// After the vertex shader file is loaded, create the shader and input layout.
+	auto createVSTask = loadVSTask.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &objvertexShader));
+
+		static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
+		{
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "UV", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+
+		};
+
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateInputLayout(vertexDesc, ARRAYSIZE(vertexDesc), &fileData[0], fileData.size(), &objinputLayout));
+	});
+
+	// After the pixel shader file is loaded, create the shader and constant buffer.
+	auto createPSTask = loadPSTask.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &objpixelShader));
+
+		//CD3D11_BUFFER_DESC constantBufferDesc(sizeof(ModelViewProjectionConstantBuffer), D3D11_BIND_CONSTANT_BUFFER);
+		//DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &m_constantBuffer));
+	});
+
 	RenderObject obj;
 	obj.LoadObjFile("test pyramid.obj");
 	DX::ThrowIfFailed(obj.SetupIndexBuffer(m_deviceResources.get()));
 	DX::ThrowIfFailed(obj.SetupVertexBuffers(m_deviceResources.get()));
-	renderObjects.push_back(obj);
+	//renderObjects.push_back(obj);
+	RenderObject obj2;
+
+	obj2.LoadObjFile("banana2.obj");
+	DX::ThrowIfFailed(obj2.SetupIndexBuffer(m_deviceResources.get()));
+	DX::ThrowIfFailed(obj2.SetupVertexBuffers(m_deviceResources.get()));
+	renderObjects.push_back(obj2);
+
+	//auto finish = 
+	(createVSTask && createPSTask).then([this]()
+	{
+		objloadingComplete = true;
+	});
 }
 
 void Sample3DSceneRenderer::SetKeyboardButtons(const char* list)
@@ -249,7 +279,7 @@ void Sample3DSceneRenderer::TrackingUpdate(float positionX)
 	}
 
 	for (int i = 0; i < renderObjects.size(); i++)
-		if (renderObjects[i].UpdateObject) 
+		if (renderObjects[i].UpdateObject)
 			renderObjects[i].UpdateObject();
 }
 
@@ -262,7 +292,7 @@ void Sample3DSceneRenderer::StopTracking(void)
 void Sample3DSceneRenderer::Render(void)
 {
 	// Loading is asynchronous. Only draw geometry after it's loaded.
-	if (!m_loadingComplete)
+	if (!m_loadingComplete || !objloadingComplete)
 	{
 		return;
 	}
@@ -315,9 +345,9 @@ void Sample3DSceneRenderer::Render(void)
 	*/
 
 
-	
+
 	//Draw my custom objects
-	XMMATRIX temp1,temp2;
+	XMMATRIX temp1, temp2;
 	for (int i = 0; i < renderObjects.size(); i++) {
 		temp1 = XMLoadFloat4x4(&renderObjects[i].Scale);
 		temp2 = XMLoadFloat4x4(&renderObjects[i].Rotation);
@@ -327,14 +357,14 @@ void Sample3DSceneRenderer::Render(void)
 
 		//update the constant buffer with specific objects rotation, and orientation
 		XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(temp1));// *renderObjects[i].Position);
-		
+
 		// XMMatrixTranspose(XMMatrixRotationY(radians)));
-		
+
 
 		// Prepare the constant buffer to send it to the graphics device.
 		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
 		// Each vertex is one instance of the VertexPositionColor struct.
-		stride = sizeof(VertexPositionColor);
+		stride = sizeof(VertexPositionUVNormal);
 		offset = 0;
 		context->IASetVertexBuffers(0, 1, &(renderObjects[i].vertexBuffer.p), &stride, &offset);
 
@@ -343,10 +373,10 @@ void Sample3DSceneRenderer::Render(void)
 
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		context->IASetInputLayout(m_inputLayout.Get());
+		context->IASetInputLayout(objinputLayout.p);
 
 		// Attach our vertex shader.
-		context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
+		context->VSSetShader(objvertexShader.p, nullptr, 0);
 
 
 		// Send the constant buffer to the graphics device.
@@ -354,12 +384,12 @@ void Sample3DSceneRenderer::Render(void)
 
 
 		// Attach our pixel shader.
-		context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+		context->PSSetShader(objpixelShader.p, nullptr, 0);
 
 		// Draw the objects. Number of Tri's
-		context->DrawIndexed(renderObjects[i].triangles.size(), 0, 0);
+		context->DrawIndexed(renderObjects[i].indexes.size(), 0, 0);
 	}
-	
+
 }
 
 void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
@@ -453,6 +483,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 
 	CreatePlane();
 	LoadOBJFiles();
+
 	// Once the cube is loaded, the object is ready to be rendered.
 	createCubeTask.then([this]()
 	{

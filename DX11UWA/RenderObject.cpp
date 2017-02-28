@@ -3,15 +3,23 @@
 
 void RenderObject::LoadObjFile(char * path)
 {
-	std::vector<DX11UWA::VertexPositionColor> tempverts;
+	std::vector<DirectX::XMFLOAT3> verts;
+	std::vector<DirectX::XMFLOAT3> Normals;
+	std::vector<DirectX::XMFLOAT3> UV;
+
+
+	std::vector<unsigned short> trianglesVert;
+	std::vector<unsigned short> trianglesUV;
+	std::vector<unsigned short> trianglesNormal;
+
 
 	//FILE * file = 
 	FILE * file;
 	fopen_s(&file, path, "r");
 	TCHAR cwd[128];
 
-	GetCurrentDirectory(128, cwd);
-	OutputDebugString(cwd);
+	//GetCurrentDirectory(128, cwd);
+	//OutputDebugString(cwd);
 
 	if (file != NULL) {
 		while (true) {
@@ -20,20 +28,20 @@ void RenderObject::LoadObjFile(char * path)
 
 			//End of file check
 			if (res == EOF)
-				return;
+				break;
 
 			//read vertex
 			if (strcmp(header, "v") == 0)
 			{
 
-				DX11UWA::VertexPositionColor vert;
-				fscanf_s(file, "%f %f %f\n", &vert.pos.x, &vert.pos.y, &vert.pos.z);
-				tempverts.push_back(vert);
+				DirectX::XMFLOAT3 vert;
+				fscanf_s(file, "%f %f %f\n", &vert.x, &vert.y, &vert.z);
+				verts.push_back(vert);
 
 			}
 			else if (strcmp(header, "vt") == 0)
 			{
-				DirectX::XMFLOAT2 _uv;
+				DirectX::XMFLOAT3 _uv;
 				fscanf_s(file, "%f %f\n", &_uv.x, &_uv.y);
 				UV.push_back(_uv);
 			}
@@ -44,41 +52,49 @@ void RenderObject::LoadObjFile(char * path)
 				Normals.push_back(norm);
 			}
 			else if (strcmp(header, "f") == 0) {
-				std::string vertex1, vertex2, vertex3;
+				//std::string vertex1, vertex2, vertex3;
 				unsigned int vertexIndex1, vertexIndex2, vertexIndex3;
 				unsigned int uvIndex1, uvIndex2, uvIndex3;
 				unsigned int normalIndex1, normalIndex2, normalIndex3;
+
 				int matches = fscanf_s(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n",
 					&vertexIndex1, &uvIndex1, &normalIndex1,
 					&vertexIndex2, &uvIndex2, &normalIndex2,
 					&vertexIndex3, &uvIndex3, &normalIndex3);
+
 				if (matches != 9) {
 					printf("File can't be read by our simple parser : ( Try exporting with other options\n");
-					return;
+					break;
 				}
 
-				triangles.push_back(verts.size());
-				verts.push_back(tempverts[vertexIndex1 - 1]);
-				triangles.push_back(verts.size());
-				verts.push_back(tempverts[vertexIndex2 - 1]);
-				triangles.push_back(verts.size());
-				verts.push_back(tempverts[vertexIndex3 - 1]);
+				trianglesVert.push_back(vertexIndex1 - 1);
+				trianglesVert.push_back(vertexIndex2 - 1);
+				trianglesVert.push_back(vertexIndex3 - 1);
 
+				trianglesUV.push_back(uvIndex1 - 1);
+				trianglesUV.push_back(uvIndex2 - 1);
+				trianglesUV.push_back(uvIndex3 - 1);
 
-				//FOR LATER. Not sure how to use this yet.
-				/*
-				uvIndices.push_back(uvIndex1);
-				uvIndices.push_back(uvIndex2);
-				uvIndices.push_back(uvIndex3);
-				normalIndices.push_back(normalIndex1);
-				normalIndices.push_back(normalIndex2);
-				normalIndices.push_back(normalIndex3);
-				*/
+				trianglesNormal.push_back(normalIndex1 - 1);
+				trianglesNormal.push_back(normalIndex2 - 1);
+				trianglesNormal.push_back(normalIndex3 - 1);
+
 			}
 
 		}
 		fclose(file);
-		delete file;
+		//delete file;
+
+		for (int i = 0; i < trianglesNormal.size(); ++i) {
+			DX11UWA::VertexPositionUVNormal temp;
+			temp.pos = verts[trianglesVert[i]];
+			temp.uv = UV[trianglesUV[i]];
+			temp.normal= Normals[trianglesNormal[i]];
+
+			vertexs.push_back(temp);
+			indexes.push_back(i);
+		}
+
 	}
 	else {
 		//ERROR
@@ -94,10 +110,10 @@ HRESULT RenderObject::SetupVertexBuffers(DX::DeviceResources* dresources)
 {
 
 	D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
-	vertexBufferData.pSysMem = &verts[0];
+	vertexBufferData.pSysMem = vertexs.data();
 	vertexBufferData.SysMemPitch = 0;
 	vertexBufferData.SysMemSlicePitch = 0;
-	CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(DX11UWA::VertexPositionColor) * verts.size(), D3D11_BIND_VERTEX_BUFFER);
+	CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(DX11UWA::VertexPositionUVNormal) * vertexs.size(), D3D11_BIND_VERTEX_BUFFER);
 	return dresources->GetD3DDevice()->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &vertexBuffer.p);
 
 }
@@ -106,10 +122,10 @@ HRESULT RenderObject::SetupIndexBuffer(DX::DeviceResources * dresources)
 {
 
 	D3D11_SUBRESOURCE_DATA indexBufferData = { 0 };
-	indexBufferData.pSysMem = &triangles[0];
+	indexBufferData.pSysMem = indexes.data();
 	indexBufferData.SysMemPitch = 0;
 	indexBufferData.SysMemSlicePitch = 0;
-	CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * triangles.size(), D3D11_BIND_INDEX_BUFFER);
+	CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * indexes.size(), D3D11_BIND_INDEX_BUFFER);
 	return dresources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &indexBuffer.p);
 
 }
