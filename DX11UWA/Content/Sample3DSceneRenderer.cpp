@@ -173,21 +173,11 @@ void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 	using namespace DirectX;
 	RenderObject obj;
 
-	//DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &m_vertexShader));
-
-	/*static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
-	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "UV", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	}*/;
-
-	//DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateInputLayout(vertexDesc, ARRAYSIZE(vertexDesc), &fileData[0], fileData.size(), &m_inputLayout));
-
 	//ORDER MATTERS.
-	obj.verts.push_back({ XMFLOAT3(-1.0f,0,1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) });
-	obj.verts.push_back({ XMFLOAT3(1.0f, 0,1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f) });
-	obj.verts.push_back({ XMFLOAT3(1.0f, 0,-1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
-	obj.verts.push_back({ XMFLOAT3(-1.0f,0,-1.0f), XMFLOAT3(0.0f, 1.0f, 1.0f) });
+	obj.verts.push_back({ XMFLOAT3(-1.0f,0,1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) });
+	obj.verts.push_back({ XMFLOAT3(1.0f, 0,1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) });
+	obj.verts.push_back({ XMFLOAT3(1.0f, 0,-1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) });
+	obj.verts.push_back({ XMFLOAT3(-1.0f,0,-1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) });
 
 
 	D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
@@ -215,9 +205,17 @@ void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 	indexBufferData.SysMemSlicePitch = 0;
 	CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * obj.triangles.size(), D3D11_BIND_INDEX_BUFFER);
 	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &obj.indexBuffer.p));
-
+	obj.Position._42 = -.5f;
 	renderObjects.push_back(obj);
 
+}
+
+void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
+	RenderObject obj;
+	obj.LoadObjFile("test pyramid.obj");
+	DX::ThrowIfFailed(obj.SetupIndexBuffer(m_deviceResources.get()));
+	DX::ThrowIfFailed(obj.SetupVertexBuffers(m_deviceResources.get()));
+	renderObjects.push_back(obj);
 }
 
 void Sample3DSceneRenderer::SetKeyboardButtons(const char* list)
@@ -249,6 +247,10 @@ void Sample3DSceneRenderer::TrackingUpdate(float positionX)
 		float radians = XM_2PI * 2.0f * positionX / m_deviceResources->GetOutputSize().Width;
 		Rotate(radians);
 	}
+
+	for (int i = 0; i < renderObjects.size(); i++)
+		if (renderObjects[i].UpdateObject) 
+			renderObjects[i].UpdateObject();
 }
 
 void Sample3DSceneRenderer::StopTracking(void)
@@ -287,7 +289,7 @@ void Sample3DSceneRenderer::Render(void)
 	// Attach our pixel shader.
 	context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 	// Draw the objects.
-	context->DrawIndexed(m_indexCount, 0, 0);
+	//context->DrawIndexed(m_indexCount, 0, 0);
 
 
 	/*
@@ -315,7 +317,20 @@ void Sample3DSceneRenderer::Render(void)
 
 	
 	//Draw my custom objects
+	XMMATRIX temp1,temp2;
 	for (int i = 0; i < renderObjects.size(); i++) {
+		temp1 = XMLoadFloat4x4(&renderObjects[i].Scale);
+		temp2 = XMLoadFloat4x4(&renderObjects[i].Rotation);
+		temp1 = XMMatrixMultiply(temp1, temp2);
+		temp2 = XMLoadFloat4x4(&renderObjects[i].Position);
+		temp1 = XMMatrixMultiply(temp1, temp2);
+
+		//update the constant buffer with specific objects rotation, and orientation
+		XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(temp1));// *renderObjects[i].Position);
+		
+		// XMMatrixTranspose(XMMatrixRotationY(radians)));
+		
+
 		// Prepare the constant buffer to send it to the graphics device.
 		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
 		// Each vertex is one instance of the VertexPositionColor struct.
@@ -342,7 +357,7 @@ void Sample3DSceneRenderer::Render(void)
 		context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 
 		// Draw the objects. Number of Tri's
-		context->DrawIndexed(renderObjects[i].triangles.size()*3, 0, 0);
+		context->DrawIndexed(renderObjects[i].triangles.size(), 0, 0);
 	}
 	
 }
@@ -437,7 +452,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	});
 
 	CreatePlane();
-
+	LoadOBJFiles();
 	// Once the cube is loaded, the object is ready to be rendered.
 	createCubeTask.then([this]()
 	{

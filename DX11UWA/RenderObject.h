@@ -11,7 +11,6 @@
 
 class RenderObject
 {
-	void LoadObjFile(char* path);
 public:
 	std::vector<DX11UWA::VertexPositionColor> verts;
 	std::vector<DirectX::XMFLOAT3> Normals;
@@ -23,9 +22,9 @@ public:
 	D3D11_SUBRESOURCE_DATA indexBufferData = { 0 };
 	CD3D11_BUFFER_DESC indexBufferDesc;
 
-	DirectX::XMFLOAT3 Position;
-	DirectX::XMFLOAT3 Rotation;
-	DirectX::XMFLOAT3 Scale;
+	DirectX::XMFLOAT4X4  Position;
+	DirectX::XMFLOAT4X4 Rotation;// = DirectX::XMMatrixIdentity();
+	DirectX::XMFLOAT4X4 Scale;// = DirectX::XMMatrixIdentity();
 
 	CComPtr<ID3D11Buffer> indexBuffer;
 	CComPtr<ID3D11Buffer> constBuffer;
@@ -33,12 +32,15 @@ public:
 
 	CComPtr<ID3D11InputLayout> inputLayout;
 
+	void (*UpdateObject)(void);
 
 	//std::vector<CComPtr<Reource
 	//Need to add shaders here
 
 	RenderObject() {
-		
+		DirectX::XMStoreFloat4x4(&Position, DirectX::XMMatrixIdentity());
+		DirectX::XMStoreFloat4x4(&Rotation, DirectX::XMMatrixIdentity());
+		DirectX::XMStoreFloat4x4(&Scale, DirectX::XMMatrixIdentity());
 
 	}
 
@@ -56,5 +58,13 @@ public:
 	//	Rotation = DirectX::XMFLOAT3(0, 0, 0);
 	//	Scale = DirectX::XMFLOAT3(1, 1, 1);
 	//}
+
+
+	void LoadObjFile(char* path);
+
+	HRESULT SetupVertexBuffers(DX::DeviceResources* dresources);
+	HRESULT SetupIndexBuffer(DX::DeviceResources* dresources);
+
+
 };
 

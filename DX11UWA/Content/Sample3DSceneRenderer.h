@@ -34,6 +34,7 @@ namespace DX11UWA
 		void Rotate(float radians);
 		void UpdateCamera(DX::StepTimer const& timer, float const moveSpd, float const rotSpd);
 		void CreatePlane();
+		void LoadOBJFiles();
 	private:
 		//Vector of all objects
 		std::vector<RenderObject> renderObjects;
