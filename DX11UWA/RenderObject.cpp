@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "RenderObject.h"
-
-void RenderObject::LoadObjFile(char * path)
+#include "Common\DDSTextureLoader.h"
+void RenderObject::LoadObjFile(const char * path)
 {
 	std::vector<DirectX::XMFLOAT3> verts;
 	std::vector<DirectX::XMFLOAT3> Normals;
@@ -18,8 +18,8 @@ void RenderObject::LoadObjFile(char * path)
 	fopen_s(&file, path, "r");
 	TCHAR cwd[128];
 
-	//GetCurrentDirectory(128, cwd);
-	//OutputDebugString(cwd);
+	GetCurrentDirectory(128, cwd);
+	OutputDebugString(cwd);
 
 	if (file != NULL) {
 		while (true) {
@@ -104,6 +104,34 @@ void RenderObject::LoadObjFile(char * path)
 
 	}
 
+}
+
+void RenderObject::LoadTexture(DX::DeviceResources* dresources, const char * path)
+{
+	size_t size = strlen(path) + 1;
+	wchar_t * wpath = new wchar_t[size];
+	size_t out;
+	//number of char converted, destination, size of destination, path, size of path
+	mbstowcs_s(&out, wpath, size, path,size-1);
+
+	//setup the resources
+	HRESULT RES = CreateDDSTextureFromFile(dresources->GetD3DDevice(), wpath, NULL,&(this->constTextureBuffer));
+	if (RES != S_OK)
+		OutputDebugString(L"Fuck");
+	//sampler
+	D3D11_SAMPLER_DESC desc;
+	ZeroMemory(&desc, sizeof(desc));
+	desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	//CLAMP EDGES, NOT WRAP
+	desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	desc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	dresources->GetD3DDevice()->CreateSamplerState(&desc, &(this->sampState));
+
+	delete[] wpath;
 }
 
 HRESULT RenderObject::SetupVertexBuffers(DX::DeviceResources* dresources)

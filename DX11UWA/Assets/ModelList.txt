@@ -1,0 +1,4 @@
+# FORMAT:
+#	obj|texture
+
+banana.obj|banana_128.dds

@@ -228,18 +228,58 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 		//CD3D11_BUFFER_DESC constantBufferDesc(sizeof(ModelViewProjectionConstantBuffer), D3D11_BIND_CONSTANT_BUFFER);
 		//DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &m_constantBuffer));
 	});
+	/*
+		RenderObject obj;
+		obj.LoadObjFile("assets/test pyramid.obj");
+		DX::ThrowIfFailed(obj.SetupIndexBuffer(m_deviceResources.get()));
+		DX::ThrowIfFailed(obj.SetupVertexBuffers(m_deviceResources.get()));
+		renderObjects.push_back(obj);
+		RenderObject obj2;
 
-	RenderObject obj;
-	obj.LoadObjFile("test pyramid.obj");
-	DX::ThrowIfFailed(obj.SetupIndexBuffer(m_deviceResources.get()));
-	DX::ThrowIfFailed(obj.SetupVertexBuffers(m_deviceResources.get()));
-	//renderObjects.push_back(obj);
-	RenderObject obj2;
+		obj2.LoadObjFile("assets/banana.obj");
+		DX::ThrowIfFailed(obj2.SetupIndexBuffer(m_deviceResources.get()));
+		DX::ThrowIfFailed(obj2.SetupVertexBuffers(m_deviceResources.get()));
+		renderObjects.push_back(obj2);
+	*/
+	auto LoadObj = createPSTask.then([this](void)
+	{
+		std::ifstream strm;
+		strm.open("assets/ModelList.txt");
+		char base[] = "./assets/";
 
-	obj2.LoadObjFile("banana2.obj");
-	DX::ThrowIfFailed(obj2.SetupIndexBuffer(m_deviceResources.get()));
-	DX::ThrowIfFailed(obj2.SetupVertexBuffers(m_deviceResources.get()));
-	renderObjects.push_back(obj2);
+		if (strm.is_open()) {
+			std::string str;
+			//read
+			while (std::getline(strm, str)) {
+				
+				//handle comments
+				if (str.length() == 0 || str[0] == '#')
+					continue;
+
+				int substrPos = (int)str.find_last_of('|');
+
+				RenderObject obj;
+				std::string path = base;
+				path += str.substr(0, substrPos).c_str();
+				obj.LoadObjFile(path.c_str());
+
+				//read the obj name
+				//strm.getline(line, 256);
+				path = base;
+				path +=  str.substr(substrPos + 1).c_str();
+				obj.LoadTexture(m_deviceResources.get(), path.c_str() );
+
+				//setup the buffers
+				DX::ThrowIfFailed(obj.SetupIndexBuffer(m_deviceResources.get()));
+				DX::ThrowIfFailed(obj.SetupVertexBuffers(m_deviceResources.get()));
+				renderObjects.push_back(obj);
+			}
+			strm.close();
+		}
+	});
+	
+
+
 
 	//auto finish = 
 	(createVSTask && createPSTask).then([this]()
@@ -318,6 +358,7 @@ void Sample3DSceneRenderer::Render(void)
 	context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
 	// Attach our pixel shader.
 	context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+	//context->PSSetShaderResources(0,1,)
 	// Draw the objects.
 	//context->DrawIndexed(m_indexCount, 0, 0);
 
@@ -370,21 +411,27 @@ void Sample3DSceneRenderer::Render(void)
 
 		// Each index is one 16-bit unsigned integer (short).
 		context->IASetIndexBuffer((renderObjects[i].indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
-
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 		context->IASetInputLayout(objinputLayout.p);
 
 		// Attach our vertex shader.
 		context->VSSetShader(objvertexShader.p, nullptr, 0);
 
-
 		// Send the constant buffer to the graphics device.
 		context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
 
+		if (renderObjects[i].constTextureBuffer == NULL)
+		{
+			context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 
-		// Attach our pixel shader.
-		context->PSSetShader(objpixelShader.p, nullptr, 0);
+		}
+		else {
+			// Attach our pixel shader.
+			context->PSSetShader(objpixelShader.p, nullptr, 0);
+			context->PSSetSamplers(0, 1, &renderObjects[i].sampState.p);
+			context->PSSetShaderResources(0, 1, &renderObjects[i].constTextureBuffer.p);
+			//context->psset
+		}
 
 		// Draw the objects. Number of Tri's
 		context->DrawIndexed(renderObjects[i].indexes.size(), 0, 0);

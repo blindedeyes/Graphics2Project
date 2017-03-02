@@ -110,12 +110,24 @@
     <Image Include="Assets\StoreLogo.png">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="..\x64\Debug\DX11UWA\AppX\Assets\banana_128.dds">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
   </ItemGroup>
   <ItemGroup>
     <None Include="DX11UWA_TemporaryKey.pfx" />
+    <None Include="Assets\banana.obj">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="Assets\banana2.obj">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="Assets\test pyramid.obj">
+      <Filter>Assets</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Content\SamplePixelShader.hlsl">
@@ -130,5 +142,10 @@
     <FxCompile Include="Content\TempVertexShader.hlsl">
       <Filter>Content\Shaders</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Assets\ModelList.txt">
+      <Filter>Assets</Filter>
+    </Text>
   </ItemGroup>
 </Project>
