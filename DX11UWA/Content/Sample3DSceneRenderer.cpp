@@ -80,6 +80,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	// Update or move camera here
 	UpdateCamera(timer, 1.0f, 0.75f);
 
+
 }
 
 // Rotate the 3D cube model a set amount of radians.
@@ -251,7 +252,7 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 			std::string str;
 			//read
 			while (std::getline(strm, str)) {
-				
+
 				//handle comments
 				if (str.length() == 0 || str[0] == '#')
 					continue;
@@ -266,8 +267,8 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 				//read the obj name
 				//strm.getline(line, 256);
 				path = base;
-				path +=  str.substr(substrPos + 1).c_str();
-				obj.LoadTexture(m_deviceResources.get(), path.c_str() );
+				path += str.substr(substrPos + 1).c_str();
+				obj.LoadTexture(m_deviceResources.get(), path.c_str());
 
 				//setup the buffers
 				DX::ThrowIfFailed(obj.SetupIndexBuffer(m_deviceResources.get()));
@@ -277,7 +278,7 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 			strm.close();
 		}
 	});
-	
+
 
 
 
@@ -286,6 +287,32 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 	{
 		objloadingComplete = true;
 	});
+}
+
+void DX11UWA::Sample3DSceneRenderer::CreateLights()
+{
+	//Directional lights
+	lights.resize(16);
+	ZeroMemory(lights.data(), sizeof(Light) * 16);
+	//Light lght;
+	lights[0].dir = DirectX::XMFLOAT4(0, -1, 0, 0);
+	//World pos, 1 is directional light, on w, doesn't use world pos
+	lights[0].pos = DirectX::XMFLOAT4(0, 0, 0, 1);
+	lights[0].color = DirectX::XMFLOAT4(1, 0, 0, 0);
+	lights[0].radius = DirectX::XMFLOAT4(0, 0, 0, 0);
+
+	//lights[0] = lght;
+
+
+	//point light
+	//World pos, 2 is point light, on w, doesn't use world pos
+	lights[1].dir = DirectX::XMFLOAT4(0, 0, 0, 0);
+	lights[1].pos = DirectX::XMFLOAT4(0, 1, 0, 2);
+	lights[1].color = DirectX::XMFLOAT4(0, 1, 0, 0);
+	lights[1].radius = DirectX::XMFLOAT4(10, 0, 0, 0);
+
+	CD3D11_BUFFER_DESC constantBufferDesc(sizeof(Light) * lights.size(), D3D11_BIND_CONSTANT_BUFFER);
+	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &m_lightBuffer));
 }
 
 void Sample3DSceneRenderer::SetKeyboardButtons(const char* list)
@@ -343,21 +370,21 @@ void Sample3DSceneRenderer::Render(void)
 
 
 	// Prepare the constant buffer to send it to the graphics device.
-	context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
-	// Each vertex is one instance of the VertexPositionColor struct.
-	UINT stride = sizeof(VertexPositionColor);
-	UINT offset = 0;
-	context->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &stride, &offset);
-	// Each index is one 16-bit unsigned integer (short).
-	context->IASetIndexBuffer(m_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->IASetInputLayout(m_inputLayout.Get());
-	// Attach our vertex shader.
-	context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
-	// Send the constant buffer to the graphics device.
-	context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
-	// Attach our pixel shader.
-	context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+	//context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+	//// Each vertex is one instance of the VertexPositionColor struct.
+	//UINT stride = sizeof(VertexPositionColor);
+	//UINT offset = 0;
+	//context->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &stride, &offset);
+	//// Each index is one 16-bit unsigned integer (short).
+	//context->IASetIndexBuffer(m_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+	//context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//context->IASetInputLayout(m_inputLayout.Get());
+	//// Attach our vertex shader.
+	//context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
+	//// Send the constant buffer to the graphics device.
+	//context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+	//// Attach our pixel shader.
+	//context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 	//context->PSSetShaderResources(0,1,)
 	// Draw the objects.
 	//context->DrawIndexed(m_indexCount, 0, 0);
@@ -384,8 +411,10 @@ void Sample3DSceneRenderer::Render(void)
 	// Draw the objects.
 	context->DrawIndexed(6, 0, 0);
 	*/
+	context->UpdateSubresource1(m_lightBuffer.p, 0, NULL, lights.data(), 0, 0, 0);
 
-
+	UINT stride = sizeof(VertexPositionUVNormal);
+	UINT offset = 0;
 
 	//Draw my custom objects
 	XMMATRIX temp1, temp2;
@@ -405,8 +434,7 @@ void Sample3DSceneRenderer::Render(void)
 		// Prepare the constant buffer to send it to the graphics device.
 		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
 		// Each vertex is one instance of the VertexPositionColor struct.
-		stride = sizeof(VertexPositionUVNormal);
-		offset = 0;
+
 		context->IASetVertexBuffers(0, 1, &(renderObjects[i].vertexBuffer.p), &stride, &offset);
 
 		// Each index is one 16-bit unsigned integer (short).
@@ -430,6 +458,7 @@ void Sample3DSceneRenderer::Render(void)
 			context->PSSetShader(objpixelShader.p, nullptr, 0);
 			context->PSSetSamplers(0, 1, &renderObjects[i].sampState.p);
 			context->PSSetShaderResources(0, 1, &renderObjects[i].constTextureBuffer.p);
+			context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
 			//context->psset
 		}
 
@@ -530,6 +559,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 
 	CreatePlane();
 	LoadOBJFiles();
+	CreateLights();
 
 	// Once the cube is loaded, the object is ready to be rendered.
 	createCubeTask.then([this]()

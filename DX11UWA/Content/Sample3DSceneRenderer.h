@@ -6,6 +6,7 @@
 
 //Render object
 #include "RenderObject.h"
+#include "Light.h"
 
 namespace DX11UWA
 {
@@ -35,6 +36,7 @@ namespace DX11UWA
 		void UpdateCamera(DX::StepTimer const& timer, float const moveSpd, float const rotSpd);
 		void CreatePlane();
 		void LoadOBJFiles();
+		void CreateLights();
 	private:
 		//Vector of all objects
 		std::vector<RenderObject> renderObjects;
@@ -52,6 +54,9 @@ namespace DX11UWA
 		CComPtr<ID3D11InputLayout> objinputLayout;
 		CComPtr<ID3D11VertexShader>	objvertexShader;
 		CComPtr<ID3D11PixelShader>	objpixelShader;
+		CComPtr<ID3D11Buffer>	m_lightBuffer;
+
+		std::vector<Light> lights;
 
 		// System resources for cube geometry.
 		ModelViewProjectionConstantBuffer	m_constantBufferData;

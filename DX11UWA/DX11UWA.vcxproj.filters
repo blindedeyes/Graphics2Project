@@ -70,6 +70,7 @@
     <ClCompile Include="RenderObject.cpp">
       <Filter>Content\Source</Filter>
     </ClCompile>
+    <ClCompile Include="Light.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Content\Sample3DSceneRenderer.h">
@@ -105,12 +106,10 @@
     <ClInclude Include="RenderObject.h">
       <Filter>Content\Headers</Filter>
     </ClInclude>
+    <ClInclude Include="Light.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\StoreLogo.png">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="..\x64\Debug\DX11UWA\AppX\Assets\banana_128.dds">
       <Filter>Assets</Filter>
     </Image>
   </ItemGroup>
@@ -128,6 +127,8 @@
     <None Include="Assets\test pyramid.obj">
       <Filter>Assets</Filter>
     </None>
+    <None Include="..\x64\Debug\DX11UWA\AppX\Assets\banana_128.dds" />
+    <None Include="Assets\ModelList.txt" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Content\SamplePixelShader.hlsl">
@@ -142,10 +143,5 @@
     <FxCompile Include="Content\TempVertexShader.hlsl">
       <Filter>Content\Shaders</Filter>
     </FxCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="Assets\ModelList.txt">
-      <Filter>Assets</Filter>
-    </Text>
   </ItemGroup>
 </Project>
