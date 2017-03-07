@@ -22,8 +22,8 @@ struct PixelShaderInput
 	float3 uv : UV;
 	float3 normal: NORMAL;
 	float4 worldPos :WORLDPOS;
-    float4 Tangent : TANGENT;
-    float4 bTangent : BTANGENT;
+	float4 Tangent : TANGENT;
+	float4 bTangent : BTANGENT;
 };
 
 cbuffer Lights : register(b0) {
@@ -60,7 +60,7 @@ float4 main(PixelShaderInput input) : SV_TARGET
 				dir[3] = 0;
 				dir = normalize(dir - input.worldPos);
 
-				float surfaceRatio = (dot((dir.xyz)*-1, normalize(LightValues[i].dir.xyz)));
+				float surfaceRatio = saturate(dot((dir.xyz)*-1, normalize(LightValues[i].dir.xyz)));
 				float spotFactor = ((surfaceRatio > LightValues[i].radius.z) ? 1 : 0);
 
 
@@ -72,15 +72,15 @@ float4 main(PixelShaderInput input) : SV_TARGET
 
 				//distance radius
 				ratio *= (1.0 - saturate(length(LightValues[i].pos - input.worldPos) / LightValues[i].radius[0]));
-				ratio *= (1.0 - saturate((LightValues[i].radius[1] - spotFactor) / (LightValues[i].radius[1] - LightValues[i].radius[2])));
+				ratio *= (1.0 - saturate((LightValues[i].radius[1] - surfaceRatio) / (LightValues[i].radius[1] - LightValues[i].radius[2])));
 
 				lightColor += ((LightValues[i].color * ratio));
 
 				
 				break;
 			case ambient:
-                //X is the ratio of ambient light
-                lightColor += ((LightValues[i].color * LightValues[i].radius.x));
+				//X is the ratio of ambient light
+				lightColor += ((LightValues[i].color * LightValues[i].radius.x));
 
 				break;
 			default:

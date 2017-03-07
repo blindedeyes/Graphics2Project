@@ -57,6 +57,7 @@ namespace DX11UWA
 		CComPtr<ID3D11PixelShader>	objBMPixelShader;
 		
 		//Light data
+		bool lightsOn[4];
 		std::vector<Light> lights;
 		CComPtr<ID3D11Buffer>	m_lightBuffer;
 
@@ -83,9 +84,10 @@ namespace DX11UWA
 		bool	objloadingComplete;
 		float	m_degreesPerSecond;
 		bool	m_tracking;
-
 		// Data members for keyboard and mouse input
 		char	m_kbuttons[256];
+		char	m_Prevbuttons[256];
+		bool OnButtonPress(char c);
 		Windows::UI::Input::PointerPoint^ m_currMousePos;
 		Windows::UI::Input::PointerPoint^ m_prevMousePos;
 

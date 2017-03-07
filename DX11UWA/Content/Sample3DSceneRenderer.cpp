@@ -180,7 +180,7 @@ void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 	obj.vertexs.push_back({ XMFLOAT3(1.0f, 0,1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f) , XMFLOAT3(0.0f, 1.0f, 0.0f) });
 	obj.vertexs.push_back({ XMFLOAT3(1.0f, 0,-1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
 	obj.vertexs.push_back({ XMFLOAT3(-1.0f,0,-1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
-	
+
 
 	//IF ABOVE ORDER IS CORRECT, THIS IS CLOCKWISE PLANE.
 	obj.indexes.push_back(0);
@@ -194,7 +194,7 @@ void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 
 	obj.CalcTangents();
 	obj.SetupVertexBuffers(m_deviceResources.get());
-	
+
 	obj.SetupIndexBuffer(m_deviceResources.get());
 	obj.LoadTexture(m_deviceResources.get(), "assets/172.dds");
 	obj.LoadNormalMap(m_deviceResources.get(), "assets/172_norm.dds");
@@ -342,7 +342,7 @@ void DX11UWA::Sample3DSceneRenderer::CreateLights()
 	lights[0].dir = DirectX::XMFLOAT4(1, -1, 0, 0);
 	//World pos, 1 is directional light, on w, doesn't use world pos
 	lights[0].pos = DirectX::XMFLOAT4(0, 0, 0, 1);
-	lights[0].color = DirectX::XMFLOAT4(1, .5, 0, 0);
+	lights[0].color = DirectX::XMFLOAT4(.5, .5, 0, 0);
 	lights[0].radius = DirectX::XMFLOAT4(0, 0, 0, 0);
 
 
@@ -350,25 +350,25 @@ void DX11UWA::Sample3DSceneRenderer::CreateLights()
 	//World pos, 2 is point light, on w, doesn't use world pos
 	lights[1].dir = DirectX::XMFLOAT4(0, 0, 0, 0);
 	lights[1].pos = DirectX::XMFLOAT4(0, -1, 0, 2);
-	lights[1].color = DirectX::XMFLOAT4(0, .75, 0, 0);
-	lights[1].radius = DirectX::XMFLOAT4(3, 0, 0, 0);
+	lights[1].color = DirectX::XMFLOAT4(0, 1, 0, 0);
+	lights[1].radius = DirectX::XMFLOAT4(2.5f, 0, 0, 0);
 
 
 	//spot light
 	//World pos, 3 is spot light, on w, doesn't use world pos
 	lights[2].dir = DirectX::XMFLOAT4(0, -1, 0, 0);
 	lights[2].pos = DirectX::XMFLOAT4(1, 0, 0, 3);
-	lights[2].color = DirectX::XMFLOAT4(1, 1, 1, 0);
-	lights[2].radius = DirectX::XMFLOAT4(3, .99f, .8f, 0);
+	lights[2].color = DirectX::XMFLOAT4(1, 0, 0, 0);
+	lights[2].radius = DirectX::XMFLOAT4(5, .9f, .85f, 0);
 
 	//ambient light, 4, ratio is held in radius x
 	lights[3].dir = DirectX::XMFLOAT4(0, 0, 0, 0);
-	lights[3].pos = DirectX::XMFLOAT4(0, 10, 0, 4);
+	lights[3].pos = DirectX::XMFLOAT4(0, 0, 0, 4);
 	lights[3].color = DirectX::XMFLOAT4(1, 1, 1, 0);
-	lights[3].radius = DirectX::XMFLOAT4(.30, 0, 0, 0);
+	lights[3].radius = DirectX::XMFLOAT4(.25f, 0, 0, 0);
 
 	CD3D11_BUFFER_DESC constantBufferDesc(sizeof(Light) * lights.size(), D3D11_BIND_CONSTANT_BUFFER);
-	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &m_lightBuffer));
+	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &m_lightBuffer.p));
 
 	RenderObject obj;
 	obj.LoadObjFile("./assets/Sphere.obj");
@@ -385,6 +385,8 @@ void DX11UWA::Sample3DSceneRenderer::CreateLights()
 	obj.SetupIndexBuffer(m_deviceResources.get());
 	obj.SetupVertexBuffers(m_deviceResources.get());
 	lightModels.push_back(obj);
+	for (int i = 0; i < 4; i++)
+		lightsOn[i] = true;
 }
 
 void DX11UWA::Sample3DSceneRenderer::UpdateLights(const DX::StepTimer &time)
@@ -392,21 +394,72 @@ void DX11UWA::Sample3DSceneRenderer::UpdateLights(const DX::StepTimer &time)
 	//Move lights
 	//XMMATRIX pos = XMMATRIX(lights[1].pos,);
 	elpsTime += time.GetElapsedSeconds();
-	float angle = (((elpsTime*100)));
+	float angle = (((elpsTime * 100)));
 	//1 rotation per 2 seconds.
 	angle = angle * XM_PI / 180.0f;
+
 	lights[0].dir.x = cosf(angle);
 	lights[0].dir.y = sinf(angle);
-
 	lights[1].pos.x = cosf(angle);
 	lights[1].pos.y = sinf(angle);
 
 	angle = ((elpsTime));
-	lights[2].pos.x = cosf(angle)+1;
-	lights[2].pos.y = sinf(angle)+1;
+	lights[2].pos.x = cosf(angle) * 2;
+	lights[2].pos.y = .75f;
+
+
+	lights[2].pos.z = sinf(angle) * 2;
+
 	//angle = (elpsTime * 100);
-	//lights[2].dir.z = sinf(angle);
-	//lights[2].dir.y = cosf(angle);
+	lights[2].dir.x = -1 * cosf(angle);
+	lights[2].dir.y = 0;// -1 * cosf(angle);
+	lights[2].dir.z = -1 * sinf(angle);
+
+	if (OnButtonPress('0')) {
+		lightsOn[0] = true;
+		lightsOn[1] = true;
+		lightsOn[2] = true;
+		lightsOn[3] = true;
+	}
+
+	if (OnButtonPress('1')) {
+		lightsOn[0] = !lightsOn[0];
+	}
+	if (OnButtonPress('2')) {
+		lightsOn[1] = !lightsOn[1];
+
+	}
+	if (OnButtonPress('3')) {
+		lightsOn[2] = !lightsOn[2];
+
+	}
+	if (OnButtonPress('4')) {
+		lightsOn[3] = !lightsOn[3];
+	}
+
+	if (lightsOn[0])
+		lights[0].color = DirectX::XMFLOAT4(.5, .5, 0, 0);
+	else
+		lights[0].color = DirectX::XMFLOAT4(0, 0, 0, 0);
+
+	if (lightsOn[1])
+		lights[1].color = DirectX::XMFLOAT4(0, 1, 0, 0);
+	else
+		lights[1].color = DirectX::XMFLOAT4(0, 0, 0, 0);
+
+
+	if (lightsOn[2])
+		lights[2].color = DirectX::XMFLOAT4(1, 0, 0, 0);
+	else
+		lights[2].color = DirectX::XMFLOAT4(0, 0, 0, 0);
+
+
+	if (lightsOn[3])
+		lights[3].color = DirectX::XMFLOAT4(1, 1, 1, 0);
+	else
+		lights[3].color = DirectX::XMFLOAT4(0, 0, 0, 0);
+
+
 
 	//hard codedededededededede Weee.
 	XMStoreFloat4x4(&lightModels[0].transform[0].Position, XMMatrixTranslation(lights[1].pos.x, lights[1].pos.y, lights[1].pos.z));
@@ -416,8 +469,17 @@ void DX11UWA::Sample3DSceneRenderer::UpdateLights(const DX::StepTimer &time)
 	XMStoreFloat4x4(&lightModels[0].transform[1].Scale, XMMatrixScaling(.2f, .2f, .2f));
 }
 
+bool DX11UWA::Sample3DSceneRenderer::OnButtonPress(char c)
+{
+	if (m_kbuttons[c] & !m_Prevbuttons[c]) {
+		return true;
+	}
+	return false;
+}
+
 void Sample3DSceneRenderer::SetKeyboardButtons(const char* list)
 {
+	memcpy_s(m_Prevbuttons, sizeof(m_Prevbuttons), m_kbuttons, sizeof(m_kbuttons));
 	memcpy_s(m_kbuttons, sizeof(m_kbuttons), list, sizeof(m_kbuttons));
 }
 
