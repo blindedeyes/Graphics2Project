@@ -127,8 +127,24 @@
     <None Include="Assets\test pyramid.obj">
       <Filter>Assets</Filter>
     </None>
-    <None Include="..\x64\Debug\DX11UWA\AppX\Assets\banana_128.dds" />
-    <None Include="Assets\ModelList.txt" />
+    <None Include="Assets\ModelList.txt">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="Assets\Sphere.obj">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="Assets\154.dds">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="Assets\banana_128.png">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="Assets\172.dds">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="Assets\172_norm.dds">
+      <Filter>Assets</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Content\SamplePixelShader.hlsl">
@@ -141,6 +157,12 @@
       <Filter>Content\Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Content\TempVertexShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\InstancedVertexShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\BumpMapPixelShader.hlsl">
       <Filter>Content\Shaders</Filter>
     </FxCompile>
   </ItemGroup>

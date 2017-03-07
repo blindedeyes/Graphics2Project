@@ -37,9 +37,8 @@ namespace DX11UWA
 		void CreatePlane();
 		void LoadOBJFiles();
 		void CreateLights();
+		void UpdateLights(const DX::StepTimer& time);
 	private:
-		//Vector of all objects
-		std::vector<RenderObject> renderObjects;
 		// Cached pointer to device resources.
 		std::shared_ptr<DX::DeviceResources> m_deviceResources;
 
@@ -51,12 +50,29 @@ namespace DX11UWA
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	m_pixelShader;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_constantBuffer;
 
+		//Shaders for RenderObjects
 		CComPtr<ID3D11InputLayout> objinputLayout;
 		CComPtr<ID3D11VertexShader>	objvertexShader;
 		CComPtr<ID3D11PixelShader>	objpixelShader;
+		CComPtr<ID3D11PixelShader>	objBMPixelShader;
+		
+		//Light data
+		std::vector<Light> lights;
 		CComPtr<ID3D11Buffer>	m_lightBuffer;
 
-		std::vector<Light> lights;
+		CComPtr<ID3D11InputLayout>  instanceInputLayout;
+		CComPtr<ID3D11VertexShader>	instanceVertexShader;
+		CComPtr<ID3D11PixelShader>	instancePixelShader;
+		CComPtr<ID3D11Buffer> m_InstanceConstBuffer;
+		InstancedModelViewProjectionConstantBuffer m_InstanceBufferData;
+
+		//Vector of objects
+		std::vector<RenderObject> renderObjects;
+		std::vector<RenderObject> lightModels;
+		std::vector<RenderObject> InstanceObjects;
+
+		//elps time for light movement
+		float elpsTime=0;
 
 		// System resources for cube geometry.
 		ModelViewProjectionConstantBuffer	m_constantBufferData;

@@ -53,6 +53,7 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 	XMMATRIX orientationMatrix = XMLoadFloat4x4(&orientation);
 
 	XMStoreFloat4x4(&m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
+	XMStoreFloat4x4(&m_InstanceBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
 
 	// Eye is at (0,0.7,1.5), looking at point (0,-0.1,0) with the up-vector along the y-axis.
 	static const XMVECTORF32 eye = { 0.0f, 0.7f, -1.5f, 0.0f };
@@ -79,7 +80,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 
 	// Update or move camera here
 	UpdateCamera(timer, 1.0f, 0.75f);
-
+	UpdateLights(timer);
 
 }
 
@@ -175,12 +176,11 @@ void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 	RenderObject obj;
 
 	//ORDER MATTERS.
-	obj.vertexs.push_back({ XMFLOAT3(-1.0f,0,1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) , XMFLOAT3(0.0f, 1.0f, 0.0f) });
-	obj.vertexs.push_back({ XMFLOAT3(1.0f, 0,1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) , XMFLOAT3(0.0f, 1.0f, 0.0f) });
-	obj.vertexs.push_back({ XMFLOAT3(1.0f, 0,-1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
-	obj.vertexs.push_back({ XMFLOAT3(-1.0f,0,-1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
-
-	obj.SetupVertexBuffers(m_deviceResources.get());
+	obj.vertexs.push_back({ XMFLOAT3(-1.0f,0,1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) , XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	obj.vertexs.push_back({ XMFLOAT3(1.0f, 0,1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f) , XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	obj.vertexs.push_back({ XMFLOAT3(1.0f, 0,-1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	obj.vertexs.push_back({ XMFLOAT3(-1.0f,0,-1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	
 
 	//IF ABOVE ORDER IS CORRECT, THIS IS CLOCKWISE PLANE.
 	obj.indexes.push_back(0);
@@ -191,7 +191,13 @@ void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 	obj.indexes.push_back(0);
 	obj.indexes.push_back(2);
 
+
+	obj.CalcTangents();
+	obj.SetupVertexBuffers(m_deviceResources.get());
+	
 	obj.SetupIndexBuffer(m_deviceResources.get());
+	obj.LoadTexture(m_deviceResources.get(), "assets/172.dds");
+	obj.LoadNormalMap(m_deviceResources.get(), "assets/172_norm.dds");
 
 	//obj.Position._42 = -.5f;
 	renderObjects.push_back(obj);
@@ -203,31 +209,54 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 	//objLayout
 	// Load shaders asynchronously.
 	auto loadVSTask = DX::ReadDataAsync(L"TempVertexShader.cso");
+	auto loadInstancedVSTask = DX::ReadDataAsync(L"InstancedVertexShader.cso");
 	auto loadPSTask = DX::ReadDataAsync(L"TempPixelShader.cso");
+	auto loadBumpMap = DX::ReadDataAsync(L"BumpMapPixelShader.cso");
 
 	// After the vertex shader file is loaded, create the shader and input layout.
 	auto createVSTask = loadVSTask.then([this](const std::vector<byte>& fileData)
 	{
-		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &objvertexShader));
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &objvertexShader.p));
 
 		static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
 		{
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "UV", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TANGENT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 
 		};
 
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateInputLayout(vertexDesc, ARRAYSIZE(vertexDesc), &fileData[0], fileData.size(), &objinputLayout));
 	});
 
+	auto createInstancedVSTask = loadInstancedVSTask.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &instanceVertexShader.p));
+		/*
+				static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
+				{
+					{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+					{ "UV", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+					{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+
+				};
+
+				DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateInputLayout(vertexDesc, ARRAYSIZE(vertexDesc), &fileData[0], fileData.size(), &objinputLayout));*/
+	});
+
 	// After the pixel shader file is loaded, create the shader and constant buffer.
 	auto createPSTask = loadPSTask.then([this](const std::vector<byte>& fileData)
 	{
-		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &objpixelShader));
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &objpixelShader.p));
 
-		//CD3D11_BUFFER_DESC constantBufferDesc(sizeof(ModelViewProjectionConstantBuffer), D3D11_BIND_CONSTANT_BUFFER);
-		//DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &m_constantBuffer));
+
+		CD3D11_BUFFER_DESC constantBufferDesc(sizeof(InstancedModelViewProjectionConstantBuffer), D3D11_BIND_CONSTANT_BUFFER);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &m_InstanceConstBuffer.p));
+	});
+
+	auto createBumpMapTask = loadBumpMap.then([this](const std::vector<byte>& filedata) {
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&filedata[0], filedata.size(), nullptr, &objBMPixelShader.p));
 	});
 	/*
 		RenderObject obj;
@@ -279,11 +308,26 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 		}
 	});
 
+	auto CreateInstancedBanana = LoadObj.then([this](void) {
+		RenderObject obj;
+		obj.InstanceCnt = 5;
+		obj.LoadObjFile("assets/banana.obj");
+		obj.LoadTexture(m_deviceResources.get(), "assets/banana_128.dds");
+		DX::ThrowIfFailed(obj.SetupIndexBuffer(m_deviceResources.get()));
+		DX::ThrowIfFailed(obj.SetupVertexBuffers(m_deviceResources.get()));
+		for (int i = 0; i < 5; i++) {
 
+			XMStoreFloat4x4(&obj.transform[i].Rotation, XMMatrixRotationX(.5f*i));
+			XMStoreFloat4x4(&obj.transform[i].Position, XMMatrixTranslation(1.5*i + 1, i * 1, 0));
+			XMStoreFloat4x4(&obj.transform[i].Scale, XMMatrixScaling(1 + (i*.5f), 1 + (i*.5f), 1 + (i*.5f)));
+
+		}
+		InstanceObjects.push_back(obj);
+	});
 
 
 	//auto finish = 
-	(createVSTask && createPSTask).then([this]()
+	(createVSTask && createPSTask && LoadObj && createInstancedVSTask && createBumpMapTask).then([this]()
 	{
 		objloadingComplete = true;
 	});
@@ -295,24 +339,81 @@ void DX11UWA::Sample3DSceneRenderer::CreateLights()
 	lights.resize(16);
 	ZeroMemory(lights.data(), sizeof(Light) * 16);
 	//Light lght;
-	lights[0].dir = DirectX::XMFLOAT4(0, -1, 0, 0);
+	lights[0].dir = DirectX::XMFLOAT4(1, -1, 0, 0);
 	//World pos, 1 is directional light, on w, doesn't use world pos
 	lights[0].pos = DirectX::XMFLOAT4(0, 0, 0, 1);
-	lights[0].color = DirectX::XMFLOAT4(1, 0, 0, 0);
+	lights[0].color = DirectX::XMFLOAT4(1, .5, 0, 0);
 	lights[0].radius = DirectX::XMFLOAT4(0, 0, 0, 0);
-
-	//lights[0] = lght;
 
 
 	//point light
 	//World pos, 2 is point light, on w, doesn't use world pos
 	lights[1].dir = DirectX::XMFLOAT4(0, 0, 0, 0);
-	lights[1].pos = DirectX::XMFLOAT4(0, 1, 0, 2);
-	lights[1].color = DirectX::XMFLOAT4(0, 1, 0, 0);
-	lights[1].radius = DirectX::XMFLOAT4(10, 0, 0, 0);
+	lights[1].pos = DirectX::XMFLOAT4(0, -1, 0, 2);
+	lights[1].color = DirectX::XMFLOAT4(0, .75, 0, 0);
+	lights[1].radius = DirectX::XMFLOAT4(3, 0, 0, 0);
+
+
+	//spot light
+	//World pos, 3 is spot light, on w, doesn't use world pos
+	lights[2].dir = DirectX::XMFLOAT4(0, -1, 0, 0);
+	lights[2].pos = DirectX::XMFLOAT4(1, 0, 0, 3);
+	lights[2].color = DirectX::XMFLOAT4(1, 1, 1, 0);
+	lights[2].radius = DirectX::XMFLOAT4(3, .99f, .8f, 0);
+
+	//ambient light, 4, ratio is held in radius x
+	lights[3].dir = DirectX::XMFLOAT4(0, 0, 0, 0);
+	lights[3].pos = DirectX::XMFLOAT4(0, 10, 0, 4);
+	lights[3].color = DirectX::XMFLOAT4(1, 1, 1, 0);
+	lights[3].radius = DirectX::XMFLOAT4(.30, 0, 0, 0);
 
 	CD3D11_BUFFER_DESC constantBufferDesc(sizeof(Light) * lights.size(), D3D11_BIND_CONSTANT_BUFFER);
 	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &m_lightBuffer));
+
+	RenderObject obj;
+	obj.LoadObjFile("./assets/Sphere.obj");
+	obj.InstanceCnt = 2;
+	//obj.transform[0].Position  lights[0].pos;
+	//XMStoreFloat4x4(&obj.transform[0].Position, XMMatrixTranslation(lights[0].pos.x, lights[0].pos.y, lights[0].pos.z));
+	//XMStoreFloat4x4(&obj.transform[0].Scale, XMMatrixScaling(.2f, .2f, .2f));
+	XMStoreFloat4x4(&obj.transform[0].Position, XMMatrixTranslation(lights[1].pos.x, lights[1].pos.y, lights[1].pos.z));
+	XMStoreFloat4x4(&obj.transform[0].Scale, XMMatrixScaling(.2f, .2f, .2f));
+
+	XMStoreFloat4x4(&obj.transform[1].Position, XMMatrixTranslation(lights[2].pos.x, lights[2].pos.y, lights[2].pos.z));
+	XMStoreFloat4x4(&obj.transform[1].Scale, XMMatrixScaling(.2f, .2f, .2f));
+	//XMStoreFloat4x4(&obj.transform[0].Position, XMMatrixTranslation(lights[0].pos.x, lights[0].pos.y, lights[0].pos.z));
+	obj.SetupIndexBuffer(m_deviceResources.get());
+	obj.SetupVertexBuffers(m_deviceResources.get());
+	lightModels.push_back(obj);
+}
+
+void DX11UWA::Sample3DSceneRenderer::UpdateLights(const DX::StepTimer &time)
+{
+	//Move lights
+	//XMMATRIX pos = XMMATRIX(lights[1].pos,);
+	elpsTime += time.GetElapsedSeconds();
+	float angle = (((elpsTime*100)));
+	//1 rotation per 2 seconds.
+	angle = angle * XM_PI / 180.0f;
+	lights[0].dir.x = cosf(angle);
+	lights[0].dir.y = sinf(angle);
+
+	lights[1].pos.x = cosf(angle);
+	lights[1].pos.y = sinf(angle);
+
+	angle = ((elpsTime));
+	lights[2].pos.x = cosf(angle)+1;
+	lights[2].pos.y = sinf(angle)+1;
+	//angle = (elpsTime * 100);
+	//lights[2].dir.z = sinf(angle);
+	//lights[2].dir.y = cosf(angle);
+
+	//hard codedededededededede Weee.
+	XMStoreFloat4x4(&lightModels[0].transform[0].Position, XMMatrixTranslation(lights[1].pos.x, lights[1].pos.y, lights[1].pos.z));
+	XMStoreFloat4x4(&lightModels[0].transform[0].Scale, XMMatrixScaling(.2f, .2f, .2f));
+
+	XMStoreFloat4x4(&lightModels[0].transform[1].Position, XMMatrixTranslation(lights[2].pos.x, lights[2].pos.y, lights[2].pos.z));
+	XMStoreFloat4x4(&lightModels[0].transform[1].Scale, XMMatrixScaling(.2f, .2f, .2f));
 }
 
 void Sample3DSceneRenderer::SetKeyboardButtons(const char* list)
@@ -367,7 +468,7 @@ void Sample3DSceneRenderer::Render(void)
 	auto context = m_deviceResources->GetD3DDeviceContext();
 
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
-
+	XMStoreFloat4x4(&m_InstanceBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 
 	// Prepare the constant buffer to send it to the graphics device.
 	//context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
@@ -411,25 +512,23 @@ void Sample3DSceneRenderer::Render(void)
 	// Draw the objects.
 	context->DrawIndexed(6, 0, 0);
 	*/
+
 	context->UpdateSubresource1(m_lightBuffer.p, 0, NULL, lights.data(), 0, 0, 0);
 
 	UINT stride = sizeof(VertexPositionUVNormal);
 	UINT offset = 0;
 
-	//Draw my custom objects
+	//Draw my custom indexed objects
 	XMMATRIX temp1, temp2;
 	for (int i = 0; i < renderObjects.size(); i++) {
-		temp1 = XMLoadFloat4x4(&renderObjects[i].Scale);
-		temp2 = XMLoadFloat4x4(&renderObjects[i].Rotation);
+		temp1 = XMLoadFloat4x4(&renderObjects[i].transform->Scale);
+		temp2 = XMLoadFloat4x4(&renderObjects[i].transform->Rotation);
 		temp1 = XMMatrixMultiply(temp1, temp2);
-		temp2 = XMLoadFloat4x4(&renderObjects[i].Position);
+		temp2 = XMLoadFloat4x4(&renderObjects[i].transform->Position);
 		temp1 = XMMatrixMultiply(temp1, temp2);
 
 		//update the constant buffer with specific objects rotation, and orientation
 		XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(temp1));// *renderObjects[i].Position);
-
-		// XMMatrixTranspose(XMMatrixRotationY(radians)));
-
 
 		// Prepare the constant buffer to send it to the graphics device.
 		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
@@ -453,17 +552,98 @@ void Sample3DSceneRenderer::Render(void)
 			context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 
 		}
-		else {
+		else if (renderObjects[i].constBumpMapBuffer == NULL) {
 			// Attach our pixel shader.
 			context->PSSetShader(objpixelShader.p, nullptr, 0);
 			context->PSSetSamplers(0, 1, &renderObjects[i].sampState.p);
 			context->PSSetShaderResources(0, 1, &renderObjects[i].constTextureBuffer.p);
+			context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
+		}
+		else {
+			// Attach our pixel shader.
+			context->PSSetShader(objBMPixelShader.p, nullptr, 0);
+			context->PSSetSamplers(0, 1, &renderObjects[i].sampState.p);
+			context->PSSetShaderResources(0, 1, &renderObjects[i].constTextureBuffer.p);
+			context->PSSetShaderResources(1, 1, &renderObjects[i].constBumpMapBuffer.p);
 			context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
 			//context->psset
 		}
 
 		// Draw the objects. Number of Tri's
 		context->DrawIndexed(renderObjects[i].indexes.size(), 0, 0);
+	}
+
+
+	//Draw my Instanced Indexed Objects
+	for (int i = 0; i < InstanceObjects.size(); ++i) {
+		//update the constant buffer with specific objects rotation, and orientation
+		for (int j = 0; j < InstanceObjects[i].InstanceCnt; ++j)
+			XMStoreFloat4x4(&m_InstanceBufferData.model[j], XMMatrixTranspose(InstanceObjects[i].transform[j].MultTransform()));// *renderObjects[i].Position);
+
+
+																			   // Prepare the constant buffer to send it to the graphics device.
+		context->UpdateSubresource1(m_InstanceConstBuffer.p, 0, NULL, &m_InstanceBufferData, 0, 0, 0);
+		// Each vertex is one instance of the VertexPositionColor struct.
+
+		context->IASetVertexBuffers(0, 1, &(InstanceObjects[i].vertexBuffer.p), &stride, &offset);
+
+		// Each index is one 16-bit unsigned integer (short).
+		context->IASetIndexBuffer((InstanceObjects[i].indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetInputLayout(objinputLayout.p);
+
+		// Attach our vertex shader.
+		context->VSSetShader(instanceVertexShader.p, nullptr, 0);
+
+		// Send the constant buffer to the graphics device.
+		context->VSSetConstantBuffers1(0, 1, &m_InstanceConstBuffer.p, nullptr, nullptr);
+
+		if (InstanceObjects[i].constTextureBuffer == NULL)
+		{
+			context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+
+		}
+		else {
+			// Attach our pixel shader.
+			context->PSSetShader(objpixelShader.p, nullptr, 0);
+			context->PSSetSamplers(0, 1, &InstanceObjects[i].sampState.p);
+			context->PSSetShaderResources(0, 1, &InstanceObjects[i].constTextureBuffer.p);
+			context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
+			//context->psset
+		}
+
+		// Draw the objects. Number of Tri's
+		context->DrawIndexedInstanced(InstanceObjects[i].indexes.size(), InstanceObjects[i].InstanceCnt, 0, 0, 0);
+	}
+
+	for (int i = 0; i < lightModels.size(); ++i) {
+		//update the constant buffer with specific objects rotation, and orientation
+		for (int j = 0; j < lightModels[i].InstanceCnt; ++j)
+			XMStoreFloat4x4(&m_InstanceBufferData.model[j], XMMatrixTranspose(lightModels[i].transform[j].MultTransform()));// *renderObjects[i].Position);
+
+		context->UpdateSubresource1(m_InstanceConstBuffer.p, 0, NULL, &m_InstanceBufferData, 0, 0, 0);
+		// Each vertex is one instance of the VertexPositionColor struct.
+
+		context->IASetVertexBuffers(0, 1, &(lightModels[i].vertexBuffer.p), &stride, &offset);
+
+		// Each index is one 16-bit unsigned integer (short).
+		context->IASetIndexBuffer((lightModels[i].indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetInputLayout(objinputLayout.p);
+
+		// Attach our vertex shader.
+		context->VSSetShader(instanceVertexShader.p, nullptr, 0);
+
+		// Send the constant buffer to the graphics device.
+		context->VSSetConstantBuffers1(0, 1, &m_InstanceConstBuffer.p, nullptr, nullptr);
+
+		//context->PSSetShader(NULL, nullptr, 0);
+		context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+
+
+
+		// Draw the objects. Number of Tri's
+		context->DrawIndexedInstanced(lightModels[i].indexes.size(), lightModels[i].InstanceCnt, 0, 0, 0);
 	}
 
 }
@@ -557,12 +737,15 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 
 	});
 
-	CreatePlane();
-	LoadOBJFiles();
-	CreateLights();
+	auto createMyStuff = createCubeTask.then([this](void) {
+		CreatePlane();
+		LoadOBJFiles();
+		CreateLights();
+
+	});
 
 	// Once the cube is loaded, the object is ready to be rendered.
-	createCubeTask.then([this]()
+	createMyStuff.then([this]()
 	{
 		m_loadingComplete = true;
 	});

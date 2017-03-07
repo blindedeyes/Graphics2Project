@@ -1,9 +1,12 @@
+
 #define directional 1
 #define pointlight 2
+#define spotlight 3
+#define ambient 4
 
-texture2D thisTexture : register(t0);
+Texture2D thisTexture : register(t0);
 
-SamplerState filters[2] : register(s0);
+SamplerState filters : register(s0);
 
 struct Light {
 	float4 pos;// : POSITION;
@@ -19,6 +22,8 @@ struct PixelShaderInput
 	float3 uv : UV;
 	float3 normal: NORMAL;
 	float4 worldPos :WORLDPOS;
+    float4 Tangent : TANGENT;
+    float4 bTangent : BTANGENT;
 };
 
 cbuffer Lights : register(b0) {
@@ -29,31 +34,61 @@ cbuffer Lights : register(b0) {
 float4 main(PixelShaderInput input) : SV_TARGET
 {
 	float4 lightColor = float4(0,0,0,0);
+	input.normal.xyz = normalize(input.normal.xyz);
 	//Lighting
 	for (int i = 0; i < 16; i++) {
 		float ratio = 0.0;
 		if (LightValues[i].pos[3] == 0) break;
+		float4 dir;
 		switch ((int)LightValues[i].pos[3]) {
 			case directional:
-				ratio = dot(-1 * LightValues[i].dir, input.normal);
+				ratio = dot(-1 * LightValues[i].dir.xyz, input.normal.xyz);
 				ratio = saturate(ratio);
 				lightColor += saturate((LightValues[i].color * ratio));
 				break;
 			case pointlight:
-				float4 dir = LightValues[i].pos;
+				dir = LightValues[i].pos;
 				dir[3] = 0;
 				dir = normalize(dir - input.worldPos);
-				ratio = dot(dir, input.normal);
+				ratio = dot(dir.xyz, input.normal);
 				ratio = saturate(ratio);
 				ratio *= (1.0 - saturate(length(LightValues[i].pos - input.worldPos) / LightValues[i].radius[0]));
 				lightColor += saturate((LightValues[i].color * ratio));
+				break;
+			case spotlight:
+				dir = LightValues[i].pos;
+				dir[3] = 0;
+				dir = normalize(dir - input.worldPos);
+
+				float surfaceRatio = (dot((dir.xyz)*-1, normalize(LightValues[i].dir.xyz)));
+				float spotFactor = ((surfaceRatio > LightValues[i].radius.z) ? 1 : 0);
+
+
+				ratio = saturate(dot(dir.xyz, input.normal.xyz));
+
+				//radius code
+				ratio = (ratio*spotFactor);
+				
+
+				//distance radius
+				ratio *= (1.0 - saturate(length(LightValues[i].pos - input.worldPos) / LightValues[i].radius[0]));
+				ratio *= (1.0 - saturate((LightValues[i].radius[1] - spotFactor) / (LightValues[i].radius[1] - LightValues[i].radius[2])));
+
+				lightColor += ((LightValues[i].color * ratio));
+
+				
+				break;
+			case ambient:
+                //X is the ratio of ambient light
+                lightColor += ((LightValues[i].color * LightValues[i].radius.x));
+
 				break;
 			default:
 				break;
 		}
 	}
 
-	float4 textureColor = thisTexture.Sample(filters[0], input.uv);
+	float4 textureColor = thisTexture.Sample(filters, input.uv.xy);
 	textureColor = textureColor * lightColor;
 	return saturate(textureColor);
 	//return float4(input.uv, 1.0f);

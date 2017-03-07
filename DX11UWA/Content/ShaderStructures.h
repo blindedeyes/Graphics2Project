@@ -9,6 +9,13 @@ namespace DX11UWA
 		DirectX::XMFLOAT4X4 view;
 		DirectX::XMFLOAT4X4 projection;
 	};
+	//Instanced data
+	struct InstancedModelViewProjectionConstantBuffer
+	{
+		DirectX::XMFLOAT4X4 model[5];
+		DirectX::XMFLOAT4X4 view;
+		DirectX::XMFLOAT4X4 projection;
+	};
 
 	// Used to send per-vertex data to the vertex shader.
 	struct VertexPositionColor
@@ -22,5 +29,6 @@ namespace DX11UWA
 		DirectX::XMFLOAT3 pos;
 		DirectX::XMFLOAT3 uv;
 		DirectX::XMFLOAT3 normal;
+		DirectX::XMFLOAT4 tangent;
 	};
 }
