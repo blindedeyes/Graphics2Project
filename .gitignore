@@ -7,3 +7,4 @@ ipch
 *.db
 *.opensdf
 *.user
+/DX11UWA.VC.VC.opendb

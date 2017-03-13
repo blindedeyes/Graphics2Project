@@ -51,22 +51,64 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 	XMFLOAT4X4 orientation = m_deviceResources->GetOrientationTransform3D();
 
 	XMMATRIX orientationMatrix = XMLoadFloat4x4(&orientation);
+	camProjMat = XMMatrixTranspose(perspectiveMatrix * orientationMatrix);
+	XMStoreFloat4x4(&m_constantBufferData.projection, camProjMat);
+	XMStoreFloat4x4(&m_InstanceBufferData.projection, camProjMat);
 
-	XMStoreFloat4x4(&m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
-	XMStoreFloat4x4(&m_InstanceBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
 
+	XMMATRIX orthProMat = XMMatrixOrthographicLH(3, 3, -1.0f,100.0f);//XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, 0.01f, 100.0f);
+
+	//XMFLOAT4X4 orientation = m_deviceResources->GetOrientationTransform3D();
+
+	//XMMATRIX orientationMatrix = XMLoadFloat4x4(&orientation);
+	lightProj = XMMatrixTranspose(orthProMat * orientationMatrix);
+	
 	// Eye is at (0,0.7,1.5), looking at point (0,-0.1,0) with the up-vector along the y-axis.
 	static const XMVECTORF32 eye = { 0.0f, 0.7f, -1.5f, 0.0f };
+	//static const XMVECTORF32 eye = { 0.0f, 1.0f, 0.0f, 0.0f };
 	static const XMVECTORF32 at = { 0.0f, -0.1f, 0.0f, 0.0f };
 	static const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
 
 	XMStoreFloat4x4(&m_camera, XMMatrixInverse(nullptr, XMMatrixLookAtLH(eye, at, up)));
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
+
+
+	//Directional light shadow
+	D3D11_TEXTURE2D_DESC textureDesc;
+	memset(&textureDesc, 0, sizeof(textureDesc));
+
+	textureDesc.Width = outputSize.Width;
+	textureDesc.Height = outputSize.Height;
+	textureDesc.MipLevels = 1;
+	textureDesc.ArraySize = 1;
+	textureDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	textureDesc.SampleDesc.Count = 1;
+	textureDesc.SampleDesc.Quality = 0;
+	textureDesc.Usage = D3D11_USAGE_DEFAULT;
+	textureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+	textureDesc.CPUAccessFlags = 0;
+	textureDesc.MiscFlags = 0;
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC desc;
+	memset(&desc, 0, sizeof(desc));
+	desc.Format = DXGI_FORMAT_D32_FLOAT;// textureDesc.Format;
+	desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	desc.Texture2D.MipSlice = 0;
+
+	lightShadowMap.Release();
+	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateTexture2D(&textureDesc, NULL, &lightShadowMap.p));
+	DSVShadowMap.Release();
+	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateDepthStencilView(lightShadowMap.p, &desc, &DSVShadowMap.p));
 }
 
 // Called once per frame, rotates the cube and calculates the model and view matrices.
 void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 {
+	if (!m_loadingComplete || !objloadingComplete)
+	{
+		return;
+	}
+
 	if (!m_tracking)
 	{
 		// Convert degrees to radians, then convert seconds to rotation angle
@@ -81,7 +123,10 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	// Update or move camera here
 	UpdateCamera(timer, 1.0f, 0.75f);
 	UpdateLights(timer);
+	XMStoreFloat4x4(&InstanceObjects[0].transform[0].Position, XMMatrixTranslation(1, 0, 0));
+	XMStoreFloat4x4(&InstanceObjects[0].transform[1].Position, XMMatrixTranslation(2, 0, 0));
 
+	renderObjects[1].transform->Position._42 = .5f;
 }
 
 // Rotate the 3D cube model a set amount of radians.
@@ -89,6 +134,11 @@ void Sample3DSceneRenderer::Rotate(float radians)
 {
 	// Prepare to pass the updated model matrix to the shader
 	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixRotationY(radians)));
+
+	XMStoreFloat4x4(&InstanceObjects[0].transform[0].Rotation, XMMatrixRotationY(radians));
+	XMStoreFloat4x4(&InstanceObjects[0].transform[0].Rotation, XMMatrixRotationY(radians));
+	XMStoreFloat4x4(&InstanceObjects[0].transform[1].Rotation, XMMatrixRotationY(radians * 2));
+
 }
 
 void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const moveSpd, float const rotSpd)
@@ -194,13 +244,41 @@ void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 
 	obj.CalcTangents();
 	obj.SetupVertexBuffers(m_deviceResources.get());
-
 	obj.SetupIndexBuffer(m_deviceResources.get());
+
 	obj.LoadTexture(m_deviceResources.get(), "assets/172.dds");
 	obj.LoadNormalMap(m_deviceResources.get(), "assets/172_norm.dds");
 
 	//obj.Position._42 = -.5f;
 	renderObjects.push_back(obj);
+
+	//RenderObject obj;
+
+	//ORDER MATTERS.
+	shadowMapObj.vertexs.push_back({ XMFLOAT3(-1.0f,1.0f ,1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) , XMFLOAT3(0.0f, 0.0f, 1.0f) });
+	shadowMapObj.vertexs.push_back({ XMFLOAT3(1.0f, 1.0f ,1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f) , XMFLOAT3(0.0f, 0.0f, 1.0f) });
+	shadowMapObj.vertexs.push_back({ XMFLOAT3(1.0f, -1.0f,1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT3(0.0f , 0.0f,  1.0f) });
+	shadowMapObj.vertexs.push_back({ XMFLOAT3(-1.0f,-1.0f,1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f , 0.0f,  1.0f) });
+
+
+	//IF ABOVE ORDER IS CORRECT, THIS IS CLOCKWISE PLANE.
+	shadowMapObj.indexes.push_back(0);
+	shadowMapObj.indexes.push_back(1);
+	shadowMapObj.indexes.push_back(2);
+
+	shadowMapObj.indexes.push_back(3);
+	shadowMapObj.indexes.push_back(0);
+	shadowMapObj.indexes.push_back(2);
+
+
+	shadowMapObj.CalcTangents();
+	shadowMapObj.SetupVertexBuffers(m_deviceResources.get());
+
+	shadowMapObj.SetupIndexBuffer(m_deviceResources.get());
+
+
+	//obj.Position._42 = -.5f;
+	//renderObjects.push_back(obj);
 
 }
 
@@ -400,6 +478,9 @@ void DX11UWA::Sample3DSceneRenderer::UpdateLights(const DX::StepTimer &time)
 
 	lights[0].dir.x = cosf(angle);
 	lights[0].dir.y = sinf(angle);
+	lights[0].pos.x = -1*cosf(angle);
+	lights[0].pos.y = -1*sinf(angle);
+
 	lights[1].pos.x = cosf(angle);
 	lights[1].pos.y = sinf(angle);
 
@@ -494,6 +575,128 @@ void Sample3DSceneRenderer::SetInputDeviceData(const char* kb, const Windows::UI
 	SetMousePosition(pos);
 }
 
+void DX11UWA::Sample3DSceneRenderer::RenderToShadow()
+{
+
+	if (!m_loadingComplete || !objloadingComplete)
+	{
+		return;
+	}
+	auto context = m_deviceResources->GetD3DDeviceContext();
+
+	ID3D11ShaderResourceView * nul = nullptr;
+	context->PSSetShaderResources(0, 1, &nul);
+	context->PSSetShaderResources(1, 1, &nul);
+	context->PSSetShaderResources(2, 1, &nul);
+	context->PSSetShader(nullptr, nullptr, 0);
+
+	context->OMSetRenderTargets(0, 0, DSVShadowMap.p);
+	context->ClearDepthStencilView(DSVShadowMap.p, D3D11_CLEAR_DEPTH, 1, 0);
+
+	XMVECTORF32 pos = { lights[0].pos.x, lights[0].pos.y, lights[0].pos.z,0.0f };
+	XMVECTORF32 at = {0.0f, -0.1f, 0.0f, 0.0f};
+	XMVECTORF32 up = {0.0f, 1.0f, 0.0f, 0.0f };
+
+	XMMATRIX camMat = XMMatrixLookAtLH(pos, at, up);
+	//render the whole scene using the light view/proj
+
+
+	DirectX::XMStoreFloat4x4(&m_constantBufferData.projection, camProjMat);
+	DirectX::XMStoreFloat4x4(&m_InstanceBufferData.projection, camProjMat);
+
+	DirectX::XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+	DirectX::XMStoreFloat4x4(&m_InstanceBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+
+	DirectX::XMStoreFloat4x4(&m_constantBufferData.lightProj, lightProj);
+	DirectX::XMStoreFloat4x4(&m_InstanceBufferData.lightProj, lightProj);
+	DirectX::XMStoreFloat4x4(&m_constantBufferData.lightView, XMMatrixTranspose(camMat));
+	DirectX::XMStoreFloat4x4(&m_InstanceBufferData.lightView, XMMatrixTranspose(camMat));
+
+	//XMMatrixLookAtLH(XMLoadFloat4(&lights[0].dir)*-1000, (XMVectorAdd(XMLoadFloat4(&lights[0].dir), XMLoadFloat4(&lights[0].dir) * -1000)), XMLoadFloat4(&XMFLOAT4(0, 1, 0, 0)));
+
+	//context->UpdateSubresource1(m_lightBuffer.p, 0, NULL, lights.data(), 0, 0, 0);
+
+	UINT stride = sizeof(VertexPositionUVNormal);
+	UINT offset = 0;
+
+	//Draw my custom indexed objects
+	XMMATRIX temp1, temp2;
+	for (int i = 0; i < renderObjects.size(); i++)
+	{
+		temp1 = XMLoadFloat4x4(&renderObjects[i].transform->Scale);
+		temp2 = XMLoadFloat4x4(&renderObjects[i].transform->Rotation);
+		temp1 = XMMatrixMultiply(temp1, temp2);
+		temp2 = XMLoadFloat4x4(&renderObjects[i].transform->Position);
+		temp1 = XMMatrixMultiply(temp1, temp2);
+
+		//update the constant buffer with specific objects rotation, and orientation
+		XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(temp1));// *renderObjects[i].Position);
+
+		// Prepare the constant buffer to send it to the graphics device.
+		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+		// Each vertex is one instance of the VertexPositionColor struct.
+
+		context->IASetVertexBuffers(0, 1, &(renderObjects[i].vertexBuffer.p), &stride, &offset);
+
+		// Each index is one 16-bit unsigned integer (short).
+		context->IASetIndexBuffer((renderObjects[i].indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetInputLayout(objinputLayout.p);
+
+		// Attach our vertex shader.
+		context->VSSetShader(m_ShadowShader.p, nullptr, 0);
+
+		// Send the constant buffer to the graphics device.
+		context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+
+		context->GSSetShader(NULL, nullptr, 0);
+
+		// Draw the objects. Number of Tri's
+		context->DrawIndexed(renderObjects[i].indexes.size(), 0, 0);
+	}
+
+
+	////Draw my Instanced Indexed Objects
+	for (int i = 0; i < InstanceObjects.size(); ++i) {
+		//update the constant buffer with specific objects rotation, and orientation
+		for (int j = 0; j < InstanceObjects[i].InstanceCnt; ++j)
+			XMStoreFloat4x4(&m_InstanceBufferData.model[j], XMMatrixTranspose(InstanceObjects[i].transform[j].MultTransform()));// *renderObjects[i].Position);
+
+		context->UpdateSubresource1(m_InstanceConstBuffer.p, 0, NULL, &m_InstanceBufferData, 0, 0, 0);
+		// Each vertex is one instance of the VertexPositionColor struct.
+
+		context->IASetVertexBuffers(0, 1, &(InstanceObjects[i].vertexBuffer.p), &stride, &offset);
+
+		// Each index is one 16-bit unsigned integer (short).
+		context->IASetIndexBuffer((InstanceObjects[i].indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetInputLayout(objinputLayout.p);
+
+		// Attach our vertex shader.
+		context->VSSetShader(m_ShadowShader.p, nullptr, 0);
+
+		// Send the constant buffer to the graphics device.
+		context->VSSetConstantBuffers1(0, 1, &m_InstanceConstBuffer.p, nullptr, nullptr);
+		context->GSSetShader(NULL, nullptr, 0);
+
+		// Draw the objects. Number of Tri's
+		context->DrawIndexedInstanced(InstanceObjects[i].indexes.size(), InstanceObjects[i].InstanceCnt, 0, 0, 0);
+	}
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+	memset(&srvDesc, 0, sizeof(srvDesc));
+
+	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = 1;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+
+	SRVShadowMap.Release();
+	DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateShaderResourceView(lightShadowMap.p, &srvDesc, &SRVShadowMap.p));
+
+
+}
+
 void DX11UWA::Sample3DSceneRenderer::StartTracking(void)
 {
 	m_tracking = true;
@@ -529,8 +732,28 @@ void Sample3DSceneRenderer::Render(void)
 
 	auto context = m_deviceResources->GetD3DDeviceContext();
 
-	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
-	XMStoreFloat4x4(&m_InstanceBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+	if (m_kbuttons['L'] == true) {
+		XMVECTORF32 pos = { lights[0].pos.x, lights[0].pos.y, lights[0].pos.z,0.0f };
+		XMVECTORF32 at = { 0.0f, -0.1f, 0.0f, 0.0f };
+		XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
+
+		XMMATRIX camMat = XMMatrixLookAtLH(pos, at, up);
+
+		DirectX::XMStoreFloat4x4(&m_constantBufferData.projection, lightProj);
+		DirectX::XMStoreFloat4x4(&m_InstanceBufferData.projection, lightProj);
+		DirectX::XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(camMat));
+		DirectX::XMStoreFloat4x4(&m_InstanceBufferData.view, XMMatrixTranspose(camMat));
+	}
+	else {
+		XMStoreFloat4x4(&m_constantBufferData.projection, camProjMat);
+		XMStoreFloat4x4(&m_InstanceBufferData.projection, camProjMat);
+
+		XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+		XMStoreFloat4x4(&m_InstanceBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+
+		//XMMatrixLookAtLH(XMLoadFloat4(&lights[0].dir)*-1000, (XMVectorAdd(XMLoadFloat4(&lights[0].dir), XMLoadFloat4(&lights[0].dir) * -1000)), XMLoadFloat4(&XMFLOAT4(0, 1, 0, 0)));
+	}
+
 
 	// Prepare the constant buffer to send it to the graphics device.
 	//context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
@@ -575,6 +798,7 @@ void Sample3DSceneRenderer::Render(void)
 	context->DrawIndexed(6, 0, 0);
 	*/
 
+
 	context->UpdateSubresource1(m_lightBuffer.p, 0, NULL, lights.data(), 0, 0, 0);
 
 	UINT stride = sizeof(VertexPositionUVNormal);
@@ -582,7 +806,46 @@ void Sample3DSceneRenderer::Render(void)
 
 	//Draw my custom indexed objects
 	XMMATRIX temp1, temp2;
-	for (int i = 0; i < renderObjects.size(); i++) {
+	//render shadow plane
+	temp1 = XMLoadFloat4x4(&shadowMapObj.transform->Scale);
+	temp2 = XMLoadFloat4x4(&shadowMapObj.transform->Rotation);
+	temp1 = XMMatrixMultiply(temp1, temp2);
+	temp2 = XMLoadFloat4x4(&shadowMapObj.transform->Position);
+	temp1 = XMMatrixMultiply(temp1, temp2);
+
+	//update the constant buffer with specific objects rotation, and orientation
+	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(temp1));// *renderObjects[i].Position);
+
+																		   // Prepare the constant buffer to send it to the graphics device.
+	context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+	// Each vertex is one instance of the VertexPositionColor struct.
+
+	context->IASetVertexBuffers(0, 1, &(shadowMapObj.vertexBuffer.p), &stride, &offset);
+
+	// Each index is one 16-bit unsigned integer (short).
+	context->IASetIndexBuffer((shadowMapObj.indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->IASetInputLayout(objinputLayout.p);
+
+	// Attach our vertex shader.
+	context->VSSetShader(objvertexShader.p, nullptr, 0);
+
+	// Send the constant buffer to the graphics device.
+	context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+
+	context->PSSetShader(m_ShadowPShader.p, nullptr, 0);
+	context->PSSetSamplers(0, 1, &renderObjects[0].sampState.p);
+	context->PSSetShaderResources(0, 1, &SRVShadowMap.p);
+	context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
+
+	context->GSSetShader(NULL, nullptr, 0);
+
+	// Draw the objects. Number of Tri's
+	context->DrawIndexed(shadowMapObj.indexes.size(), 0, 0);
+
+
+	for (int i = 0; i < renderObjects.size(); i++)
+	{
 		temp1 = XMLoadFloat4x4(&renderObjects[i].transform->Scale);
 		temp2 = XMLoadFloat4x4(&renderObjects[i].transform->Rotation);
 		temp1 = XMMatrixMultiply(temp1, temp2);
@@ -619,6 +882,8 @@ void Sample3DSceneRenderer::Render(void)
 			context->PSSetShader(objpixelShader.p, nullptr, 0);
 			context->PSSetSamplers(0, 1, &renderObjects[i].sampState.p);
 			context->PSSetShaderResources(0, 1, &renderObjects[i].constTextureBuffer.p);
+			context->PSSetShaderResources(1, 1, &SRVShadowMap.p);
+
 			context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
 		}
 		else {
@@ -627,9 +892,12 @@ void Sample3DSceneRenderer::Render(void)
 			context->PSSetSamplers(0, 1, &renderObjects[i].sampState.p);
 			context->PSSetShaderResources(0, 1, &renderObjects[i].constTextureBuffer.p);
 			context->PSSetShaderResources(1, 1, &renderObjects[i].constBumpMapBuffer.p);
+			context->PSSetShaderResources(2, 1, &SRVShadowMap.p);
+
 			context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
 			//context->psset
 		}
+		context->GSSetShader(NULL, nullptr, 0);
 
 		// Draw the objects. Number of Tri's
 		context->DrawIndexed(renderObjects[i].indexes.size(), 0, 0);
@@ -659,7 +927,7 @@ void Sample3DSceneRenderer::Render(void)
 
 		// Send the constant buffer to the graphics device.
 		context->VSSetConstantBuffers1(0, 1, &m_InstanceConstBuffer.p, nullptr, nullptr);
-
+		context->GSSetShader(NULL, nullptr, 0);
 		if (InstanceObjects[i].constTextureBuffer == NULL)
 		{
 			context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
@@ -669,13 +937,15 @@ void Sample3DSceneRenderer::Render(void)
 			// Attach our pixel shader.
 			context->PSSetShader(objpixelShader.p, nullptr, 0);
 			context->PSSetSamplers(0, 1, &InstanceObjects[i].sampState.p);
+
 			context->PSSetShaderResources(0, 1, &InstanceObjects[i].constTextureBuffer.p);
+			context->PSSetShaderResources(1, 1, &SRVShadowMap.p);
 			context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
 			//context->psset
 		}
 
 		// Draw the objects. Number of Tri's
-		context->DrawIndexedInstanced(InstanceObjects[i].indexes.size(), InstanceObjects[i].InstanceCnt, 0, 0, 0);
+		//context->DrawIndexedInstanced(InstanceObjects[i].indexes.size(), InstanceObjects[i].InstanceCnt, 0, 0, 0);
 	}
 
 	for (int i = 0; i < lightModels.size(); ++i) {
@@ -690,18 +960,18 @@ void Sample3DSceneRenderer::Render(void)
 
 		// Each index is one 16-bit unsigned integer (short).
 		context->IASetIndexBuffer((lightModels[i].indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
-		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);//D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		context->IASetInputLayout(objinputLayout.p);
 
 		// Attach our vertex shader.
-		context->VSSetShader(instanceVertexShader.p, nullptr, 0);
-
+		//context->VSSetShader(instanceVertexShader.p, nullptr, 0);
+		context->VSSetShader(m_GeoVertexShader.p, nullptr, 0);
 		// Send the constant buffer to the graphics device.
-		context->VSSetConstantBuffers1(0, 1, &m_InstanceConstBuffer.p, nullptr, nullptr);
+		context->GSSetConstantBuffers1(0, 1, &m_InstanceConstBuffer.p, nullptr, nullptr);
 
 		//context->PSSetShader(NULL, nullptr, 0);
 		context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
-
+		context->GSSetShader(m_GeoShader.p, nullptr, 0);
 
 
 		// Draw the objects. Number of Tri's
@@ -712,9 +982,25 @@ void Sample3DSceneRenderer::Render(void)
 
 void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 {
+	//lightProj = XMMatrixOrthographicLH(1028, 1028, .1, 100);
+
+
 	// Load shaders asynchronously.
 	auto loadVSTask = DX::ReadDataAsync(L"SampleVertexShader.cso");
 	auto loadPSTask = DX::ReadDataAsync(L"SamplePixelShader.cso");
+	auto loadGSTask = DX::ReadDataAsync(L"TriangleGeoShader.cso");
+	auto loadVSGeoTask = DX::ReadDataAsync(L"ForwardToGeoVertexShader.cso");
+	auto loadVSShadowTask = DX::ReadDataAsync(L"ShadowVSShader.cso");
+	auto loadPSShadowTask = DX::ReadDataAsync(L"DrawShadowMapPixelShader.cso");
+	// After the vertex shader file is loaded, create the shader and input layout.
+	auto createVSShadowTask = loadVSShadowTask.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &m_ShadowShader.p));
+	});
+	auto createPSShadowTask = loadPSShadowTask.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &m_ShadowPShader.p));
+	});
 
 	// After the vertex shader file is loaded, create the shader and input layout.
 	auto createVSTask = loadVSTask.then([this](const std::vector<byte>& fileData)
@@ -739,6 +1025,13 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &m_constantBuffer));
 	});
 
+	auto createGSTase = loadGSTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateGeometryShader(&fileData[0], fileData.size(), nullptr, &m_GeoShader.p));
+	});
+	auto createGeoVSTask = loadVSGeoTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &m_GeoVertexShader.p));
+
+	});
 	// Once both shaders are loaded, create the mesh.
 	auto createCubeTask = (createPSTask && createVSTask).then([this]()
 	{
@@ -804,10 +1097,11 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		LoadOBJFiles();
 		CreateLights();
 
+
 	});
 
 	// Once the cube is loaded, the object is ready to be rendered.
-	createMyStuff.then([this]()
+	(createMyStuff && createGSTase && createVSShadowTask).then([this]()
 	{
 		m_loadingComplete = true;
 	});

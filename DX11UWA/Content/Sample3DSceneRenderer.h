@@ -29,7 +29,7 @@ namespace DX11UWA
 		void SetKeyboardButtons(const char* list);
 		void SetMousePosition(const Windows::UI::Input::PointerPoint^ pos);
 		void SetInputDeviceData(const char* kb, const Windows::UI::Input::PointerPoint^ pos);
-
+		void RenderToShadow();
 
 	private:
 		void Rotate(float radians);
@@ -39,6 +39,7 @@ namespace DX11UWA
 		void CreateLights();
 		void UpdateLights(const DX::StepTimer& time);
 	private:
+		DirectX::XMMATRIX camProjMat;
 		// Cached pointer to device resources.
 		std::shared_ptr<DX::DeviceResources> m_deviceResources;
 
@@ -50,16 +51,32 @@ namespace DX11UWA
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	m_pixelShader;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_constantBuffer;
 
+
+
 		//Shaders for RenderObjects
 		CComPtr<ID3D11InputLayout> objinputLayout;
 		CComPtr<ID3D11VertexShader>	objvertexShader;
 		CComPtr<ID3D11PixelShader>	objpixelShader;
 		CComPtr<ID3D11PixelShader>	objBMPixelShader;
+		CComPtr<ID3D11GeometryShader> m_GeoShader;
+		CComPtr<ID3D11VertexShader>	m_GeoVertexShader;
+		CComPtr<ID3D11VertexShader>	m_ShadowShader;
+		CComPtr<ID3D11PixelShader>	m_ShadowPShader;
+		
+
+		RenderObject shadowMapObj;
 		
 		//Light data
 		bool lightsOn[4];
-		std::vector<Light> lights;
 		CComPtr<ID3D11Buffer>	m_lightBuffer;
+		CComPtr<ID3D11Texture2D> lightShadowMap;
+		
+		CComPtr<ID3D11DepthStencilView> DSVShadowMap;
+		CComPtr<ID3D11ShaderResourceView> SRVShadowMap;
+
+		std::vector<Light> lights;
+		DirectX::XMMATRIX lightProj;
+
 
 		CComPtr<ID3D11InputLayout>  instanceInputLayout;
 		CComPtr<ID3D11VertexShader>	instanceVertexShader;

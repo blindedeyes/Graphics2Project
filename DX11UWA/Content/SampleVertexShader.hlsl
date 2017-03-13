@@ -3,8 +3,10 @@ cbuffer ModelViewProjectionConstantBuffer : register(b0)
 {
 	matrix model;
 	matrix view;
-	matrix projection;
-};
+    matrix projection;
+    matrix lightView;
+    matrix lightProj;
+};  
 
 // Per-vertex data used as input to the vertex shader.
 struct VertexShaderInput

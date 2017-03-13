@@ -8,6 +8,8 @@ namespace DX11UWA
 		DirectX::XMFLOAT4X4 model;
 		DirectX::XMFLOAT4X4 view;
 		DirectX::XMFLOAT4X4 projection;
+		DirectX::XMFLOAT4X4 lightView;
+		DirectX::XMFLOAT4X4 lightProj;
 	};
 	//Instanced data
 	struct InstancedModelViewProjectionConstantBuffer
@@ -15,6 +17,8 @@ namespace DX11UWA
 		DirectX::XMFLOAT4X4 model[5];
 		DirectX::XMFLOAT4X4 view;
 		DirectX::XMFLOAT4X4 projection;
+		DirectX::XMFLOAT4X4 lightView;
+		DirectX::XMFLOAT4X4 lightProj;
 	};
 
 	// Used to send per-vertex data to the vertex shader.
