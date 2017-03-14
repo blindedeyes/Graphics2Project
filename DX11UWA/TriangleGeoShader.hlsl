@@ -61,12 +61,12 @@ void main(
     pos = mul(pos, projection);
 
     element[0].pos = pos;
-
+/*
     element[0].lPos = input[0].pos;
     element[0].lPos = mul(element[0].lPos, model[input[0].instID]); //mul(model[input[0].instID], mul(lightView, lightProj)));
     element[0].lPos = mul(element[0].lPos, lightView); //mul(model[input[0].instID], mul(lightView, lightProj)));
     element[0].lPos = mul(element[0].lPos, lightProj); //mul(model[input[0].instID], mul(lightView, lightProj)));
-
+*/
 
     
     pos = element[1].pos;
@@ -76,12 +76,13 @@ void main(
     pos = mul(pos, projection);
 
     element[1].pos = pos;
-            
+
+/*  
     element[1].lPos = input[0].pos;
     element[1].lPos = mul(element[1].lPos, model[input[0].instID]); //mul(model[input[0].instID], mul(lightView, lightProj)));
     element[1].lPos = mul(element[1].lPos, lightView); //mul(model[input[0].instID], mul(lightView, lightProj)));
     element[1].lPos = mul(element[1].lPos, lightProj); //mul(model[input[0].instID], mul(lightView, lightProj)));
-
+*/
     
     pos = element[2].pos;
 
@@ -89,12 +90,14 @@ void main(
     pos = mul(pos, view);
     pos = mul(pos, projection);
 
+
     element[2].pos = pos;
+/*
     element[2].lPos = input[0].pos;
     element[2].lPos = mul(element[2].lPos, model[input[0].instID]); //mul(model[input[0].instID], mul(lightView, lightProj)));
     element[2].lPos = mul(element[2].lPos, lightView); //mul(model[input[0].instID], mul(lightView, lightProj)));
     element[2].lPos = mul(element[2].lPos, lightProj); //mul(model[input[0].instID], mul(lightView, lightProj)));
-
+*/
     output.Append(element[0]);
     output.Append(element[1]);
     output.Append(element[2]);

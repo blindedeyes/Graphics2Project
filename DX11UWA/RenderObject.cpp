@@ -208,7 +208,7 @@ void RenderObject::LoadTexture(DX::DeviceResources* dresources, const char * pat
 	//sampler
 	D3D11_SAMPLER_DESC desc;
 	ZeroMemory(&desc, sizeof(desc));
-	desc.Filter = D3D11_FILTER_ANISOTROPIC;
+	desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 	//CLAMP EDGES, NOT WRAP
 	desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
 	desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;

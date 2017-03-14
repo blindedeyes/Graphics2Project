@@ -2,6 +2,12 @@
 #	obj|diffuse|normal|posX|posY|posZ|rotX|rotY|rotZ|scaleX|scaleY|scaleZ|troll texture
 # 
 
-Terrain.obj|TerrainColor.dds|TerrainNormal.dds|0|-15|0|0|0|0|.05|.05|.05|
-banana.obj|banana_128.dds||0|0|.5|0|0|0|2|2|2|gottaGoFast.dds
-banana.obj|banana_128.dds||2|2|.5|0|0|0|2|2|2|gottaGoFast.dds
+Terrain.obj|TerrainColor.dds|TerrainNormal.dds|0|-15.5|0|0|0|0|.05|.05|.05|
+banana.obj|banana_128.dds||0|1|1|0|45|0|2|2|2|gottaGoFast.dds
+banana.obj|banana_128.dds||2|1|1|0|90|0|2|2|2|gottaGoFast.dds
+banana.obj|banana_128.dds||-2|2|1|0|90|0|2|2|2|gottaGoFast.dds
+banana.obj|banana_128.dds||4|1|1|0|60|30|2|2|2|gottaGoFast.dds
+banana.obj|banana_128.dds||-4|4|1|0|100|20|2|2|2|gottaGoFast.dds
+banana.obj|banana_128.dds||2|1|1|90|0|0|2|2|2|gottaGoFast.dds
+banana.obj|banana_128.dds||-3|3|1|45|30|0|2|2|2|gottaGoFast.dds
+banana.obj|banana_128.dds||3|1|1|60|90|0|2|2|2|gottaGoFast.dds

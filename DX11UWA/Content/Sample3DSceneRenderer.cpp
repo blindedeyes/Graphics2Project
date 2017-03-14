@@ -31,14 +31,14 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 	Size outputSize = m_deviceResources->GetOutputSize();
 	float aspectRatio = outputSize.Width / outputSize.Height;
 	float fovAngleY = 70.0f * XM_PI / 180.0f;
-
+	/*
 	// This is a simple example of change that can be made when the app is in
 	// portrait or snapped view.
 	if (aspectRatio < 1.0f)
 	{
 		fovAngleY *= 2.0f;
 	}
-
+	*/
 	// Note that the OrientationTransform3D matrix is post-multiplied here
 	// in order to correctly orient the scene to match the display orientation.
 	// This post-multiplication step is required for any draw calls that are
@@ -61,17 +61,22 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 	//XMFLOAT4X4 orientation = m_deviceResources->GetOrientationTransform3D();
 
 	//XMMATRIX orientationMatrix = XMLoadFloat4x4(&orientation);
-	lightProj = XMMatrixTranspose(orthProMat * orientationMatrix);
+	if (camSetUp == false) {
+		lightProj = XMMatrixTranspose(orthProMat * orientationMatrix);
 
-	// Eye is at (0,0.7,1.5), looking at point (0,-0.1,0) with the up-vector along the y-axis.
-	static const XMVECTORF32 eye = { 0.0f, 0.7f, -1.5f, 0.0f };
-	//static const XMVECTORF32 eye = { 0.0f, 1.0f, 0.0f, 0.0f };
-	static const XMVECTORF32 at = { 0.0f, -0.1f, 0.0f, 0.0f };
-	static const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
+		// Eye is at (0,0.7,1.5), looking at point (0,-0.1,0) with the up-vector along the y-axis.
+		static const XMVECTORF32 eye = { 0.0f, 0.7f, -1.5f, 0.0f };
+		//static const XMVECTORF32 eye = { 0.0f, 1.0f, 0.0f, 0.0f };
+		static const XMVECTORF32 at = { 0.0f, -0.1f, 0.0f, 0.0f };
+		static const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
 
-	XMStoreFloat4x4(&m_camera, XMMatrixInverse(nullptr, XMMatrixLookAtLH(eye, at, up)));
-	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
-
+		XMStoreFloat4x4(&m_camera, XMMatrixInverse(nullptr, XMMatrixLookAtLH(eye, at, up)));
+		XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
+		camSetUp = true;
+	}
+	else {
+		//do nothin
+	}
 
 	//Directional light shadow
 	D3D11_TEXTURE2D_DESC textureDesc;
@@ -514,8 +519,9 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 
 
 					//Load position 
+					float degtorad = XM_PI / 180.0f;
 					XMStoreFloat4x4(&obj.transform[0].Position, XMMatrixTranslation(std::stof(lineData[3]), std::stof(lineData[4]), std::stof(lineData[5])));
-					XMStoreFloat4x4(&obj.transform[0].Rotation, XMMatrixMultiply(XMMatrixRotationX(std::stof(lineData[6])), XMMatrixMultiply(XMMatrixRotationY(std::stof(lineData[7])), XMMatrixRotationZ(std::stof(lineData[8])))));
+					XMStoreFloat4x4(&obj.transform[0].Rotation, XMMatrixMultiply(XMMatrixRotationX(std::stof(lineData[6])*degtorad), XMMatrixMultiply(XMMatrixRotationY(std::stof(lineData[7])*degtorad), XMMatrixRotationZ(std::stof(lineData[8])*degtorad))));
 					XMStoreFloat4x4(&obj.transform[0].Scale, XMMatrixScaling(std::stof(lineData[9]), std::stof(lineData[10]), std::stof(lineData[11])));
 
 					//setup the buffers

@@ -87,6 +87,7 @@ float4 main(PixelShaderInput input) : SV_TARGET
                 //+0.5;
                 
                     float4 depth = shadowMap.Sample(filters, screenpos.xy);
+                    //float4 depth = shadowMap.SampleCmpLevelZero(filters, screenpos.xy, screenpos.z+.005f);
 
                 //Ignore this light if its depth is farther than what is in shadow map
                     float bias = 0.005;

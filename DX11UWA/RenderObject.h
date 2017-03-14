@@ -17,9 +17,9 @@ struct Transform {
 	DirectX::XMMATRIX MultTransform() {
 		DirectX::XMMATRIX temp1, temp2;
 		temp1 = XMLoadFloat4x4(&this->Scale);
-		temp2 = XMLoadFloat4x4(&this->Position);
-		temp1 = XMMatrixMultiply(temp1, temp2);
 		temp2 = XMLoadFloat4x4(&this->Rotation);
+		temp1 = XMMatrixMultiply(temp1, temp2);
+		temp2 = XMLoadFloat4x4(&this->Position);
 		temp1 = XMMatrixMultiply(temp1, temp2);
 		return ( temp1);
 	}
