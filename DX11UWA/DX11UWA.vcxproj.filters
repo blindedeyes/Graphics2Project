@@ -112,16 +112,7 @@
     <Image Include="Assets\StoreLogo.png">
       <Filter>Assets</Filter>
     </Image>
-    <Image Include="Assets\TerrainColor.dds">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="Assets\TerrainNormal.dds">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="Assets\gottaGoFast.dds">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="Assets\OutputCube.dds">
+    <Image Include="Assets\Dankey_Kang.dds">
       <Filter>Assets</Filter>
     </Image>
   </ItemGroup>
@@ -155,6 +146,11 @@
       <Filter>Assets</Filter>
     </None>
     <None Include="Assets\banana_128.dds" />
+    <None Include="Assets\gottaGoFast.dds" />
+    <None Include="Assets\OutputCube.dds" />
+    <None Include="Assets\TerrainColor.dds" />
+    <None Include="Assets\TerrainNormal.dds" />
+    <None Include="Assets\Terrain.obj" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Content\SamplePixelShader.hlsl">
@@ -193,10 +189,5 @@
     <FxCompile Include="SkyboxPixelShader.hlsl">
       <Filter>Content\Shaders</Filter>
     </FxCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Object Include="Assets\objout.obj">
-      <Filter>Assets</Filter>
-    </Object>
   </ItemGroup>
 </Project>

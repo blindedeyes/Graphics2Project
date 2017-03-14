@@ -335,6 +335,7 @@ void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 
 	shadowMapObj.SetupIndexBuffer(m_deviceResources.get());
 
+	XMStoreFloat4x4( &shadowMapObj.transform->Position, XMMatrixTranslation(0, 4, 0));
 
 	//obj.Position._42 = -.5f;
 	//renderObjects.push_back(obj);
@@ -489,12 +490,15 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 						lineData.push_back(str.substr(StartOfWord, str.length() - StartOfWord));
 					}
 				}
+				if (lineData.size() < 13) {
+					lineData.push_back("");
+				}
 				//If already loaded this model/texture.
 				bool Exists = false;
 				//Check if already loaded.
 				int i = 0;
 				for (; i < allreadyLoaded.size(); ++i) {
-					if (allreadyLoaded[i] == (lineData[0] + '|' + lineData[1] + '|' + lineData[2]))
+					if (allreadyLoaded[i] == (lineData[0] + '|' + lineData[1] + '|' + lineData[2] + '|' + lineData[12]))
 					{
 						Exists = true;
 						break;
@@ -530,7 +534,7 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 
 					obj.InstanceCnt = 1;
 
-					allreadyLoaded.push_back((lineData[0] + '|' + lineData[1] + '|' + lineData[2]));
+					allreadyLoaded.push_back((lineData[0] + '|' + lineData[1] + '|' + lineData[2] + '|' + lineData[12]));
 
 					InstanceObjects.push_back(obj);
 				}
@@ -990,7 +994,7 @@ void Sample3DSceneRenderer::Render(void)
 	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH, 1, 0);
 
 	//draw shadow depth buffer
-	/*
+	
 	//render shadow plane
 	temp1 = XMLoadFloat4x4(&shadowMapObj.transform->Scale);
 	temp2 = XMLoadFloat4x4(&shadowMapObj.transform->Rotation);
@@ -1008,7 +1012,7 @@ void Sample3DSceneRenderer::Render(void)
 	context->IASetVertexBuffers(0, 1, &(shadowMapObj.vertexBuffer.p), &stride, &offset);
 
 	// Each index is one 16-bit unsigned integer (short).
-	context->IASetIndexBuffer((shadowMapObj.indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
+	context->IASetIndexBuffer((shadowMapObj.indexBuffer.p), DXGI_FORMAT_R32_UINT, 0);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->IASetInputLayout(objinputLayout.p);
 
@@ -1019,7 +1023,7 @@ void Sample3DSceneRenderer::Render(void)
 	context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
 
 	context->PSSetShader(m_ShadowPShader.p, nullptr, 0);
-	context->PSSetSamplers(0, 1, &renderObjects[0].sampState.p);
+	context->PSSetSamplers(0, 1, &InstanceObjects[0].sampState.p);
 	context->PSSetShaderResources(0, 1, &SRVShadowMap.p);
 	context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
 
@@ -1027,7 +1031,7 @@ void Sample3DSceneRenderer::Render(void)
 
 	// Draw the objects. Number of Tri's
 	context->DrawIndexed(shadowMapObj.indexes.size(), 0, 0);
-	*/
+	
 
 	//Retired render loop
 	/*

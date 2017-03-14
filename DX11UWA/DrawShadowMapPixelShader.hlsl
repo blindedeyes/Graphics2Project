@@ -43,7 +43,7 @@ float4 main(PixelShaderInput input) : SV_TARGET
 	
 
     float depth = shadowMap.Sample(filters, input.uv.xy);
-    
-    return float4(depth, 0, 0,0);
+    depth *= depth;
+    return float4(depth, depth, depth,0);
 	//return float4(input.uv, 1.0f);
 }
