@@ -121,6 +121,9 @@
     <Image Include="Assets\gottaGoFast.dds">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="Assets\OutputCube.dds">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -185,6 +188,9 @@
       <Filter>Content\Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Content\TrollPixelShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="SkyboxPixelShader.hlsl">
       <Filter>Content\Shaders</Filter>
     </FxCompile>
   </ItemGroup>

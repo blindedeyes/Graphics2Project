@@ -65,11 +65,11 @@ float4 main(PixelShaderInput input) : SV_TARGET
                     screenpos.x = screenpos.x / 2 + 0.5;
                     screenpos.y = screenpos.y / -2 + 0.5;
                 
-                    float depth = shadowMap.Sample(filters, screenpos.xy);
+                    float4 depth = shadowMap.Sample(filters, screenpos.xy);
 
                 //Ignore this light if its depth is farther than what is in shadow map
                     float bias = 0.005;
-                    if (depth < screenpos.z - bias)
+                    if (depth.x < screenpos.z - bias)
                         break;
                 }
                 ratio = dot(-1 * LightValues[i].dir.xyz, input.normal.xyz);
@@ -123,8 +123,8 @@ float4 main(PixelShaderInput input) : SV_TARGET
     float4 textureColor = thisTexture.Sample(filters, input.uv.xy);
     float4 temp = trollTexture.Sample(filters, input.uv.xy);
     //Multiply troll texture before light calc
-    textureColor += temp;
-    textureColor = lerp(textureColor, temp, .5f);
+    //textureColor += temp;
+    textureColor = lerp(textureColor, temp, temp.w*.5);
     textureColor = textureColor * lightColor;
     return saturate(textureColor);
 	//return float4(input.uv, 1.0f);

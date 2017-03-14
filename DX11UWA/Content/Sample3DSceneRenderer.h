@@ -63,8 +63,9 @@ namespace DX11UWA
 		CComPtr<ID3D11VertexShader>	m_GeoVertexShader;
 		CComPtr<ID3D11VertexShader>	m_ShadowShader;
 		CComPtr<ID3D11PixelShader>	m_ShadowPShader;
-		
+		CComPtr<ID3D11PixelShader>	skyboxPShader;
 
+		
 		RenderObject shadowMapObj;
 		
 		//Light data
@@ -87,6 +88,7 @@ namespace DX11UWA
 		InstancedModelViewProjectionConstantBuffer m_InstanceBufferData;
 
 		//Vector of objects
+		RenderObject skybox;
 		std::vector<RenderObject> renderObjects;
 		std::vector<RenderObject> lightModels;
 		std::vector<RenderObject> InstanceObjects;

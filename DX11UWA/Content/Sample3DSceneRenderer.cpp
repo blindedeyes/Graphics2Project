@@ -223,34 +223,88 @@ void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const
 void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 {
 	using namespace DirectX;
-	RenderObject obj;
 
 	//ORDER MATTERS.
-	obj.vertexs.push_back({ XMFLOAT3(-1.0f,0,1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) , XMFLOAT3(0.0f, 1.0f, 0.0f) });
-	obj.vertexs.push_back({ XMFLOAT3(1.0f, 0,1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f) , XMFLOAT3(0.0f, 1.0f, 0.0f) });
-	obj.vertexs.push_back({ XMFLOAT3(1.0f, 0,-1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
-	obj.vertexs.push_back({ XMFLOAT3(-1.0f,0,-1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	skybox.vertexs.push_back({ XMFLOAT3(-1.0f,-1.0f,1.0f), XMFLOAT3(-1.0f, -1.0f, 1.0f) , XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	skybox.vertexs.push_back({ XMFLOAT3(1.0f, -1.0f,1.0f), XMFLOAT3(1.0f, -1.0f, 1.0f) , XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	skybox.vertexs.push_back({ XMFLOAT3(1.0f, -1.0f,-1.0f), XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	skybox.vertexs.push_back({ XMFLOAT3(-1.0f,-1.0f,-1.0f), XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
+
+	skybox.vertexs.push_back({ XMFLOAT3(-1.0f,1.0f,1.0f), XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	skybox.vertexs.push_back({ XMFLOAT3(1.0f, 1.0f,1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	skybox.vertexs.push_back({ XMFLOAT3(1.0f, 1.0f,-1.0f), XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
+	skybox.vertexs.push_back({ XMFLOAT3(-1.0f,1.0f,-1.0f), XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) });
 
 
 	//IF ABOVE ORDER IS CORRECT, THIS IS CLOCKWISE PLANE.
-	obj.indexes.push_back(0);
-	obj.indexes.push_back(1);
-	obj.indexes.push_back(2);
 
-	obj.indexes.push_back(3);
-	obj.indexes.push_back(0);
-	obj.indexes.push_back(2);
+	//Bottom
+	skybox.indexes.push_back(0);
+	skybox.indexes.push_back(1);
+	skybox.indexes.push_back(2);
+
+	skybox.indexes.push_back(3);
+	skybox.indexes.push_back(0);
+	skybox.indexes.push_back(2);
+
+	//top
+	skybox.indexes.push_back(4);
+	skybox.indexes.push_back(6);
+	skybox.indexes.push_back(5);
+
+	skybox.indexes.push_back(6);
+	skybox.indexes.push_back(4);
+	skybox.indexes.push_back(7);
+
+	//front
+	skybox.indexes.push_back(2);
+	skybox.indexes.push_back(6);
+	skybox.indexes.push_back(7);
 
 
-	obj.CalcTangents();
-	obj.SetupVertexBuffers(m_deviceResources.get());
-	obj.SetupIndexBuffer(m_deviceResources.get());
+	skybox.indexes.push_back(2);
+	skybox.indexes.push_back(7);
+	skybox.indexes.push_back(3);
 
-	obj.LoadTexture(m_deviceResources.get(), "assets/172.dds");
-	obj.LoadNormalMap(m_deviceResources.get(), "assets/172_norm.dds");
+	//back
 
-	//obj.Position._42 = -.5f;
-	renderObjects.push_back(obj);
+	skybox.indexes.push_back(4);
+	skybox.indexes.push_back(5);
+	skybox.indexes.push_back(0);
+
+	skybox.indexes.push_back(0);
+	skybox.indexes.push_back(5);
+	skybox.indexes.push_back(1);
+
+	//left
+
+	skybox.indexes.push_back(3);
+	skybox.indexes.push_back(7);
+	skybox.indexes.push_back(4);
+
+	skybox.indexes.push_back(0);
+	skybox.indexes.push_back(3);
+	skybox.indexes.push_back(4);
+
+	//right
+
+	skybox.indexes.push_back(1);
+	skybox.indexes.push_back(5);
+	skybox.indexes.push_back(6);
+
+	skybox.indexes.push_back(1);
+	skybox.indexes.push_back(6);
+	skybox.indexes.push_back(2);
+	
+	skybox.CalcTangents();
+	skybox.SetupVertexBuffers(m_deviceResources.get());
+	skybox.SetupIndexBuffer(m_deviceResources.get());
+
+	skybox.LoadTexture(m_deviceResources.get(), "assets/OutputCube.dds");
+	//skybox.LoadNormalMap(m_deviceResources.get(), "assets/172_norm.dds");
+	skybox.InstanceCnt = 1;
+	//skybox.Position._42 = -.5f;
+	//	InstanceObjects.push_back(obj);
 
 	//RenderObject obj;
 
@@ -435,7 +489,7 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 				//Check if already loaded.
 				int i = 0;
 				for (; i < allreadyLoaded.size(); ++i) {
-					if (allreadyLoaded[i] == (lineData[0] + '|' + lineData[1] + '|' + lineData[2])) 
+					if (allreadyLoaded[i] == (lineData[0] + '|' + lineData[1] + '|' + lineData[2]))
 					{
 						Exists = true;
 						break;
@@ -523,7 +577,7 @@ void DX11UWA::Sample3DSceneRenderer::CreateLights()
 	lights[0].dir = DirectX::XMFLOAT4(1, -1, 0, 0);
 	//World pos, 1 is directional light, on w, doesn't use world pos
 	lights[0].pos = DirectX::XMFLOAT4(0, 0, 0, 1);
-	lights[0].color = DirectX::XMFLOAT4(1,1,1, 0);
+	lights[0].color = DirectX::XMFLOAT4(1, 1, 1, 0);
 	lights[0].radius = DirectX::XMFLOAT4(0, 0, 0, 0);
 
 
@@ -624,7 +678,7 @@ void DX11UWA::Sample3DSceneRenderer::UpdateLights(const DX::StepTimer &time)
 	}
 
 	if (lightsOn[0])
-		lights[0].color = DirectX::XMFLOAT4(1,1,1, 0);
+		lights[0].color = DirectX::XMFLOAT4(1, 1, 1, 0);
 	else
 		lights[0].color = DirectX::XMFLOAT4(0, 0, 0, 0);
 
@@ -862,25 +916,7 @@ void Sample3DSceneRenderer::Render(void)
 	}
 
 
-	// Prepare the constant buffer to send it to the graphics device.
-	//context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
-	//// Each vertex is one instance of the VertexPositionColor struct.
-	//UINT stride = sizeof(VertexPositionColor);
-	//UINT offset = 0;
-	//context->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &stride, &offset);
-	//// Each index is one 16-bit unsigned integer (short).
-	//context->IASetIndexBuffer(m_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-	//context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	//context->IASetInputLayout(m_inputLayout.Get());
-	//// Attach our vertex shader.
-	//context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
-	//// Send the constant buffer to the graphics device.
-	//context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
-	//// Attach our pixel shader.
-	//context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
-	//context->PSSetShaderResources(0,1,)
-	// Draw the objects.
-	//context->DrawIndexed(m_indexCount, 0, 0);
+
 
 
 	/*
@@ -913,6 +949,39 @@ void Sample3DSceneRenderer::Render(void)
 
 	//Draw my custom indexed objects
 	XMMATRIX temp1, temp2;
+
+
+
+
+
+	//update the constant buffer with specific objects rotation, and orientation
+	XMStoreFloat4x4(&m_constantBufferData.model, 	XMMatrixTranspose(XMMatrixTranslation(m_camera._41, m_camera._42, m_camera._43)));// *renderObjects[i].Position);
+																		   // Prepare the constant buffer to send it to the graphics device.
+	context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+	// Each vertex is one instance of the VertexPositionColor struct.
+
+	context->IASetVertexBuffers(0, 1, &(skybox.vertexBuffer.p), &stride, &offset);
+
+	// Each index is one 16-bit unsigned integer (short).
+	context->IASetIndexBuffer((skybox.indexBuffer.p), DXGI_FORMAT_R32_UINT, 0);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->IASetInputLayout(objinputLayout.p);
+
+	// Attach our vertex shader.
+	context->VSSetShader(objvertexShader.p, nullptr, 0);
+
+	// Send the constant buffer to the graphics device.
+	context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+
+	context->PSSetShader(skyboxPShader.p, nullptr, 0);
+	context->PSSetShaderResources(0,1,&skybox.constTextureBuffer.p);
+	context->PSSetSamplers(0, 1, &skybox.sampState.p);
+	context->GSSetShader(NULL, nullptr, 0);
+
+	// Draw the objects. Number of Tri's
+	context->DrawIndexed(skybox.indexes.size(), 0, 0);
+
+	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH, 1, 0);
 
 	//draw shadow depth buffer
 	/*
@@ -1066,7 +1135,7 @@ void Sample3DSceneRenderer::Render(void)
 
 				context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
 			}
-		} 
+		}
 		else {
 			// Attach our pixel shader.
 			context->PSSetShader(objBMPixelShader.p, nullptr, 0);
@@ -1127,6 +1196,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	auto loadVSShadowTask = DX::ReadDataAsync(L"ShadowVSShader.cso");
 	auto loadPSShadowTask = DX::ReadDataAsync(L"DrawShadowMapPixelShader.cso");
 	auto loadTrollShader = DX::ReadDataAsync(L"TrollPixelShader.cso");
+	auto loadSkyboxShader = DX::ReadDataAsync(L"SkyboxPixelShader.cso");
 	// After the vertex shader file is loaded, create the shader and input layout.
 	auto createVSShadowTask = loadVSShadowTask.then([this](const std::vector<byte>& fileData)
 	{
@@ -1140,6 +1210,10 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	auto createPSShadowTask = loadPSShadowTask.then([this](const std::vector<byte>& fileData)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &m_ShadowPShader.p));
+	});
+	auto createSkyboxShader = loadSkyboxShader.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &skyboxPShader.p));
 	});
 
 	// After the vertex shader file is loaded, create the shader and input layout.
@@ -1241,7 +1315,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	});
 
 	// Once the cube is loaded, the object is ready to be rendered.
-	(createMyStuff && createGSTase && createVSShadowTask && createtrollTask && createPSShadowTask && createGeoVSTask).then([this]()
+	(createMyStuff && createGSTase && createVSShadowTask && createtrollTask && createPSShadowTask && createGeoVSTask && createSkyboxShader).then([this]()
 	{
 		m_loadingComplete = true;
 	});
