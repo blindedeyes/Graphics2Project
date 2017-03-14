@@ -112,6 +112,15 @@
     <Image Include="Assets\StoreLogo.png">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="Assets\TerrainColor.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\TerrainNormal.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\gottaGoFast.dds">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -175,5 +184,13 @@
     <FxCompile Include="DrawShadowMapPixelShader.hlsl">
       <Filter>Content\Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="Content\TrollPixelShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="Assets\objout.obj">
+      <Filter>Assets</Filter>
+    </Object>
   </ItemGroup>
 </Project>

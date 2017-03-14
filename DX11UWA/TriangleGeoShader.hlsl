@@ -1,6 +1,6 @@
 cbuffer ModelViewProjectionConstantBuffer : register(b0)
 {
-    matrix model[5];
+    matrix model[16];
     matrix view;
     matrix projection;
     matrix lightView;
@@ -42,48 +42,61 @@ void main(
     
     element[0].pos = float4(input[0].pos.xyz, 1);
     element[0].uv = input[0].uv;
-    element[0].pos.y += .5f;
 
-    element[1].pos = input[0].pos;
+    element[1].pos = element[0].pos;
     element[1].uv = input[0].uv;
-    element[1].pos.x += .3f;
     
-    element[2].pos = input[0].pos;
+    element[2].pos = element[0].pos;
     element[2].uv = input[0].uv;
+
+
+    element[0].pos.y += .5f;
+    element[1].pos.x += .3f;
     element[2].pos.x -= .3f;
+    
+    float4 pos = element[0].pos;
 
-    for (int i = 0; i < 3; ++i)
-    {
-        float4 pos = element[i].pos;
+    pos = mul(pos, model[input[0].instID]);
+    pos = mul(pos, view);
+    pos = mul(pos, projection);
 
-        pos = mul(pos, model[input[0].instID]);
-        pos = mul(pos, view);
-        pos = mul(pos, projection);
+    element[0].pos = pos;
 
-        element[i].pos = pos;
-        element[i].lPos = input[0].pos;
-        element[i].lPos = mul(element[i].lPos, model[input[0].instID]); //mul(model[input[0].instID], mul(lightView, lightProj)));
-        element[i].lPos = mul(element[i].lPos, lightView); //mul(model[input[0].instID], mul(lightView, lightProj)));
-        element[i].lPos = mul(element[i].lPos, lightProj); //mul(model[input[0].instID], mul(lightView, lightProj)));
+    element[0].lPos = input[0].pos;
+    element[0].lPos = mul(element[0].lPos, model[input[0].instID]); //mul(model[input[0].instID], mul(lightView, lightProj)));
+    element[0].lPos = mul(element[0].lPos, lightView); //mul(model[input[0].instID], mul(lightView, lightProj)));
+    element[0].lPos = mul(element[0].lPos, lightProj); //mul(model[input[0].instID], mul(lightView, lightProj)));
 
-        //float4 temp = float4(element[i].normal, 0);
-        
-    //normal to world space
-        //output.normal = mul(temp, model[instanceID]);
-        //output.normal = normalize(output.normal);
-    //world pos for lighting
-        //output.worldPos = pos;
-        //output.pos = pos;
-    //uv pass
-        //output.uv = input.uv;
 
-    //Normal tangent data
-        //output.Tangent = mul(float4(input.Tangent.xyz * input.Tangent.w, 0.0f), model[instanceID]);
-        //output.bTangent = mul(float4(cross(input.normal.xyz, input.Tangent.xyz), 0.0f), model[instanceID]);
+    
+    pos = element[1].pos;
 
-        output.Append(element[i]);
-        //output.Append(element2);
-        //output.Append(element3);
-    }
-        //output.RestartStrip();
+    pos = mul(pos, model[input[0].instID]);
+    pos = mul(pos, view);
+    pos = mul(pos, projection);
+
+    element[1].pos = pos;
+            
+    element[1].lPos = input[0].pos;
+    element[1].lPos = mul(element[1].lPos, model[input[0].instID]); //mul(model[input[0].instID], mul(lightView, lightProj)));
+    element[1].lPos = mul(element[1].lPos, lightView); //mul(model[input[0].instID], mul(lightView, lightProj)));
+    element[1].lPos = mul(element[1].lPos, lightProj); //mul(model[input[0].instID], mul(lightView, lightProj)));
+
+    
+    pos = element[2].pos;
+
+    pos = mul(pos, model[input[0].instID]);
+    pos = mul(pos, view);
+    pos = mul(pos, projection);
+
+    element[2].pos = pos;
+    element[2].lPos = input[0].pos;
+    element[2].lPos = mul(element[2].lPos, model[input[0].instID]); //mul(model[input[0].instID], mul(lightView, lightProj)));
+    element[2].lPos = mul(element[2].lPos, lightView); //mul(model[input[0].instID], mul(lightView, lightProj)));
+    element[2].lPos = mul(element[2].lPos, lightProj); //mul(model[input[0].instID], mul(lightView, lightProj)));
+
+    output.Append(element[0]);
+    output.Append(element[1]);
+    output.Append(element[2]);
+    
 }

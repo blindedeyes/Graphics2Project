@@ -73,27 +73,27 @@ float4 main(PixelShaderInput input) : SV_TARGET
         {
             case directional:
                 float3 screenpos = input.lPos.xyz / input.lPos.w;
-                //on screen check
-                if (screenpos.x > 1.0f || screenpos.x < -1.0f ||
+                
+                //on Depth Check
+                if (!(screenpos.x > 1.0f || screenpos.x < -1.0f ||
                     screenpos.y > 1.0f || screenpos.y < -1.0f ||
-                    screenpos.z > 1.0f || screenpos.z < -1.0f)
+                    screenpos.z > 1.0f || screenpos.z < -1.0f))
                 {
-                //off the range of the shadow map
-                //skip this light run.
-                    break;
-                }
+                //    break;
+                //}
                 //put it in uv coords
-                screenpos.x = screenpos.x * .5f + .5f; // + 0.5;
-                screenpos.y = screenpos.y * -.5f + .5f;
+                    screenpos.x = screenpos.x * .5f + .5f; // + 0.5;
+                    screenpos.y = screenpos.y * -.5f + .5f;
                 //+0.5;
                 
-                float depth = shadowMap.Sample(filters, screenpos.xy);
+                    float4 depth = shadowMap.Sample(filters, screenpos.xy);
 
                 //Ignore this light if its depth is farther than what is in shadow map
-                float bias = 0.005;
-                if (depth < screenpos.z-bias)
-                    break;
-
+                    float bias = 0.005;
+                    if (depth.x < screenpos.z - bias)
+                        break;
+                
+                }
                 ratio = dot(-1 * LightValues[i].dir.xyz, normalValue.xyz);
                 ratio = saturate(ratio);
                 lightColor += saturate((LightValues[i].color * ratio));

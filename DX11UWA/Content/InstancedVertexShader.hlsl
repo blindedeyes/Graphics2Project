@@ -1,7 +1,7 @@
 // A constant buffer that stores the three basic column-major matrices for composing geometry.
 cbuffer IntancedModelViewProjectionConstantBuffer : register(b0)
 {
-    matrix model[5];
+    matrix model[16];
     matrix view;
     matrix projection;
     matrix lightView;
@@ -37,6 +37,7 @@ PixelShaderInput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     float4 pos = float4(input.pos, 1.0f);
     //pos to proj space
     pos = mul(pos, model[instanceID]);
+    output.worldPos = pos;
     pos = mul(pos, view);
     pos = mul(pos, projection);
 
@@ -45,16 +46,20 @@ PixelShaderInput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     output.normal = mul(temp, model[instanceID]);
     output.normal = normalize(output.normal);
     //world pos for lighting
-    output.worldPos = pos;
     output.pos = pos;
     //uv pass
     output.uv = input.uv;
 
     //Normal tangent data
-    output.Tangent = mul(float4(input.Tangent.xyz * input.Tangent.w, 0.0f), model[instanceID]);
+    //output.Tangent = mul(float4(input.Tangent.xyz * input.Tangent.w, 0.0f), model[instanceID]);
     output.lPos = mul(float4(input.pos, 1.0f), model[instanceID]);
     output.lPos = mul(output.lPos, lightView);
     output.lPos = mul(output.lPos, lightProj);
+    //output.bTangent = mul(float4(cross(input.normal.xyz, input.Tangent.xyz), 0.0f), model[instanceID]);
+
+    
+    output.Tangent = mul(float4(input.Tangent.xyz * input.Tangent.w, 0.0f), model[instanceID]);
     output.bTangent = mul(float4(cross(input.normal.xyz, input.Tangent.xyz), 0.0f), model[instanceID]);
+
     return output;
 }

@@ -31,7 +31,7 @@ public:
 	
 	void CalcTangents();
 	std::vector<DX11UWA::VertexPositionUVNormal> vertexs;
-	std::vector<unsigned short> indexes;
+	std::vector<unsigned int> indexes;
 
 
 	D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
@@ -41,10 +41,11 @@ public:
 	CComPtr<ID3D11Buffer> indexBuffer;
 	CComPtr<ID3D11Buffer> vertexBuffer;
 	
-	Transform transform[5];
+	Transform transform[16];
 	
 	//Used for the texture, pass into DDS file converter, it puts it into this for us.
 	CComPtr<ID3D11ShaderResourceView> constTextureBuffer;
+	CComPtr<ID3D11ShaderResourceView> constTrollBuffer;
 	CComPtr<ID3D11ShaderResourceView> constBumpMapBuffer;
 
 	
@@ -113,6 +114,7 @@ public:
 	void LoadNormalMap(DX::DeviceResources* dresources, const char * path);
 	HRESULT SetupVertexBuffers(DX::DeviceResources* dresources);
 	HRESULT SetupIndexBuffer(DX::DeviceResources* dresources);
+	void LoadTroll(DX::DeviceResources* dresources, const char * path);
 
 
 };

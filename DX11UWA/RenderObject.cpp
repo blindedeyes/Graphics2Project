@@ -76,9 +76,9 @@ void RenderObject::LoadObjFile(const char * path)
 	std::vector<DirectX::XMFLOAT3> UV;
 
 
-	std::vector<unsigned short> trianglesVert;
-	std::vector<unsigned short> trianglesUV;
-	std::vector<unsigned short> trianglesNormal;
+	std::vector<unsigned int> trianglesVert;
+	std::vector<unsigned int> trianglesUV;
+	std::vector<unsigned int> trianglesNormal;
 
 
 	//FILE * file = 
@@ -176,6 +176,23 @@ void RenderObject::LoadObjFile(const char * path)
 
 }
 
+
+void RenderObject::LoadTroll(DX::DeviceResources* dresources, const char * path)
+{
+	size_t size = strlen(path) + 1;
+	wchar_t * wpath = new wchar_t[size];
+	size_t out;
+	//number of char converted, destination, size of destination, path, size of path
+	mbstowcs_s(&out, wpath, size, path, size - 1);
+
+	//setup the resources
+	HRESULT RES = CreateDDSTextureFromFile(dresources->GetD3DDevice(), wpath, NULL, &(this->constTrollBuffer.p));
+	if (RES != S_OK)
+		OutputDebugString(L"Fuck");
+	//sampler
+
+	delete[] wpath;
+}
 void RenderObject::LoadTexture(DX::DeviceResources* dresources, const char * path)
 {
 	size_t size = strlen(path) + 1;
@@ -191,7 +208,7 @@ void RenderObject::LoadTexture(DX::DeviceResources* dresources, const char * pat
 	//sampler
 	D3D11_SAMPLER_DESC desc;
 	ZeroMemory(&desc, sizeof(desc));
-	desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+	desc.Filter = D3D11_FILTER_ANISOTROPIC;
 	//CLAMP EDGES, NOT WRAP
 	desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
 	desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -239,7 +256,7 @@ HRESULT RenderObject::SetupIndexBuffer(DX::DeviceResources * dresources)
 	indexBufferData.pSysMem = indexes.data();
 	indexBufferData.SysMemPitch = 0;
 	indexBufferData.SysMemSlicePitch = 0;
-	CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * indexes.size(), D3D11_BIND_INDEX_BUFFER);
+	CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned int) * indexes.size(), D3D11_BIND_INDEX_BUFFER);
 	return dresources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &indexBuffer.p);
 
 }

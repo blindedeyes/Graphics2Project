@@ -14,7 +14,7 @@ namespace DX11UWA
 	//Instanced data
 	struct InstancedModelViewProjectionConstantBuffer
 	{
-		DirectX::XMFLOAT4X4 model[5];
+		DirectX::XMFLOAT4X4 model[16];
 		DirectX::XMFLOAT4X4 view;
 		DirectX::XMFLOAT4X4 projection;
 		DirectX::XMFLOAT4X4 lightView;

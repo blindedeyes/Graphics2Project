@@ -1,6 +1,6 @@
 cbuffer ModelViewProjectionConstantBuffer : register(b0)
 {
-    matrix model;
+    matrix model[16];
     matrix view;
     matrix projection;
     matrix lightView;
@@ -21,13 +21,13 @@ struct PixelShaderInput
 };
 
 //// Simple shader to do vertex processing on the GPU.
-PixelShaderInput main(VertexShaderInput input)
+PixelShaderInput main(VertexShaderInput input, unsigned int instID : SV_InstanceID)
 {
     PixelShaderInput output;
     float4 pos = float4(input.pos, 1.0f);
 
 	// Transform the vertex position into projected space.
-    pos = mul(pos, model);
+    pos = mul(pos, model[instID]);
     pos = mul(pos, lightView);
     pos = mul(pos, lightProj);
     //mul(lightView, lightProj)));

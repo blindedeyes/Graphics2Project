@@ -56,13 +56,13 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 	XMStoreFloat4x4(&m_InstanceBufferData.projection, camProjMat);
 
 
-	XMMATRIX orthProMat = XMMatrixOrthographicLH(3, 3, -1.0f,100.0f);//XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, 0.01f, 100.0f);
+	XMMATRIX orthProMat = XMMatrixOrthographicLH(20, 20, -1.0f, 100.0f);//XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, 0.01f, 100.0f);
 
 	//XMFLOAT4X4 orientation = m_deviceResources->GetOrientationTransform3D();
 
 	//XMMATRIX orientationMatrix = XMLoadFloat4x4(&orientation);
 	lightProj = XMMatrixTranspose(orthProMat * orientationMatrix);
-	
+
 	// Eye is at (0,0.7,1.5), looking at point (0,-0.1,0) with the up-vector along the y-axis.
 	static const XMVECTORF32 eye = { 0.0f, 0.7f, -1.5f, 0.0f };
 	//static const XMVECTORF32 eye = { 0.0f, 1.0f, 0.0f, 0.0f };
@@ -123,10 +123,10 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	// Update or move camera here
 	UpdateCamera(timer, 1.0f, 0.75f);
 	UpdateLights(timer);
-	XMStoreFloat4x4(&InstanceObjects[0].transform[0].Position, XMMatrixTranslation(1, 0, 0));
-	XMStoreFloat4x4(&InstanceObjects[0].transform[1].Position, XMMatrixTranslation(2, 0, 0));
+	//XMStoreFloat4x4(&InstanceObjects[0].transform[0].Position, XMMatrixTranslation(1, 0, 0));
+	//XMStoreFloat4x4(&InstanceObjects[0].transform[1].Position, XMMatrixTranslation(2, 0, 0));
 
-	renderObjects[1].transform->Position._42 = .5f;
+	//renderObjects[1].transform->Position._42 = .5f;
 }
 
 // Rotate the 3D cube model a set amount of radians.
@@ -135,9 +135,9 @@ void Sample3DSceneRenderer::Rotate(float radians)
 	// Prepare to pass the updated model matrix to the shader
 	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixRotationY(radians)));
 
-	XMStoreFloat4x4(&InstanceObjects[0].transform[0].Rotation, XMMatrixRotationY(radians));
-	XMStoreFloat4x4(&InstanceObjects[0].transform[0].Rotation, XMMatrixRotationY(radians));
-	XMStoreFloat4x4(&InstanceObjects[0].transform[1].Rotation, XMMatrixRotationY(radians * 2));
+	//XMStoreFloat4x4(&InstanceObjects[0].transform[0].Rotation, XMMatrixRotationY(radians));
+	//XMStoreFloat4x4(&InstanceObjects[0].transform[0].Rotation, XMMatrixRotationY(radians));
+	//XMStoreFloat4x4(&InstanceObjects[0].transform[1].Rotation, XMMatrixRotationY(radians * 2));
 
 }
 
@@ -336,6 +336,7 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 	auto createBumpMapTask = loadBumpMap.then([this](const std::vector<byte>& filedata) {
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&filedata[0], filedata.size(), nullptr, &objBMPixelShader.p));
 	});
+
 	/*
 		RenderObject obj;
 		obj.LoadObjFile("assets/test pyramid.obj");
@@ -349,22 +350,28 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 		DX::ThrowIfFailed(obj2.SetupVertexBuffers(m_deviceResources.get()));
 		renderObjects.push_back(obj2);
 	*/
+	/*
 	auto LoadObj = createPSTask.then([this](void)
 	{
+		//retired.
+		//obj|diffuse
 		std::ifstream strm;
+
+
 		strm.open("assets/ModelList.txt");
 		char base[] = "./assets/";
 
 		if (strm.is_open()) {
 			std::string str;
 			//read
+			int prevInstance = 0;
 			while (std::getline(strm, str)) {
 
 				//handle comments
 				if (str.length() == 0 || str[0] == '#')
 					continue;
 
-				int substrPos = (int)str.find_last_of('|');
+				int substrPos = (int)str.find('|', prevInstance);
 
 				RenderObject obj;
 				std::string path = base;
@@ -385,7 +392,102 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 			strm.close();
 		}
 	});
+	*/
 
+	auto LoadObj = createPSTask.then([this](void)
+	{
+		//obj | diffuse | normal | posX | posY | posZ | rotX | rotY | rotZ | scaleX | scaleY | scaleZ
+		std::ifstream strm;
+
+
+		strm.open("assets/ModelList.txt");
+		char base[] = "./assets/";
+
+		if (strm.is_open()) {
+			std::string str;
+			std::vector<std::string> allreadyLoaded;
+			//read
+			int prevInstance = 0;
+			while (std::getline(strm, str)) {
+
+				//handle comments
+				if (str.length() == 0 || str[0] == '#')
+					continue;
+
+				std::vector<std::string> lineData;
+
+				//Split the string into the vector
+				//Used to denote the start of the current string
+				int StartOfWord = 0;
+				//Length of the string when used in substring, sstarts at the position of first delim
+				int EndOfWord = str.find('|');
+				while (str.length() >= EndOfWord) {
+
+					lineData.push_back(str.substr(StartOfWord, EndOfWord - StartOfWord));
+					StartOfWord = EndOfWord + 1;
+					EndOfWord = str.find('|', StartOfWord);
+					if (EndOfWord == -1 && str.length() > StartOfWord) {
+						lineData.push_back(str.substr(StartOfWord, str.length() - StartOfWord));
+					}
+				}
+				//If already loaded this model/texture.
+				bool Exists = false;
+				//Check if already loaded.
+				int i = 0;
+				for (; i < allreadyLoaded.size(); ++i) {
+					if (allreadyLoaded[i] == (lineData[0] + '|' + lineData[1] + '|' + lineData[2])) 
+					{
+						Exists = true;
+						break;
+					}
+				}
+				if (!Exists) {
+					RenderObject obj;
+
+					obj.LoadObjFile((base + lineData[0]).c_str());
+
+					//read the obj name
+					//strm.getline(line, 256);
+					if (lineData[1].length() > 0)
+						obj.LoadTexture(m_deviceResources.get(), (base + lineData[1]).c_str());
+
+					if (lineData[2].length() > 0)
+						obj.LoadNormalMap(m_deviceResources.get(), (base + lineData[1]).c_str());
+
+					if (lineData.size() > 12 && lineData[12].length() > 0) {
+						obj.LoadTroll(m_deviceResources.get(), (base + lineData[12]).c_str());
+					}
+
+
+					//Load position 
+					XMStoreFloat4x4(&obj.transform[0].Position, XMMatrixTranslation(std::stof(lineData[3]), std::stof(lineData[4]), std::stof(lineData[5])));
+					XMStoreFloat4x4(&obj.transform[0].Rotation, XMMatrixMultiply(XMMatrixRotationX(std::stof(lineData[6])), XMMatrixMultiply(XMMatrixRotationY(std::stof(lineData[7])), XMMatrixRotationZ(std::stof(lineData[8])))));
+					XMStoreFloat4x4(&obj.transform[0].Scale, XMMatrixScaling(std::stof(lineData[9]), std::stof(lineData[10]), std::stof(lineData[11])));
+
+					//setup the buffers
+					DX::ThrowIfFailed(obj.SetupIndexBuffer(m_deviceResources.get()));
+					DX::ThrowIfFailed(obj.SetupVertexBuffers(m_deviceResources.get()));
+
+					obj.InstanceCnt = 1;
+
+					allreadyLoaded.push_back((lineData[0] + '|' + lineData[1] + '|' + lineData[2]));
+
+					InstanceObjects.push_back(obj);
+				}
+				else {
+
+					XMStoreFloat4x4(&InstanceObjects[i].transform[InstanceObjects[i].InstanceCnt].Position, XMMatrixTranslation(std::stof(lineData[3]), std::stof(lineData[4]), std::stof(lineData[5])));
+					XMStoreFloat4x4(&InstanceObjects[i].transform[InstanceObjects[i].InstanceCnt].Rotation, XMMatrixRotationX(std::stof(lineData[6])) * XMMatrixRotationY(std::stof(lineData[7])) * XMMatrixRotationZ(std::stof(lineData[8])));
+					XMStoreFloat4x4(&InstanceObjects[i].transform[InstanceObjects[i].InstanceCnt].Scale, XMMatrixScaling(std::stof(lineData[9]), std::stof(lineData[10]), std::stof(lineData[11])));
+					InstanceObjects[i].InstanceCnt += 1;
+				}
+			}
+			strm.close();
+		}
+	});
+
+	//retired
+	/*
 	auto CreateInstancedBanana = LoadObj.then([this](void) {
 		RenderObject obj;
 		obj.InstanceCnt = 5;
@@ -403,9 +505,10 @@ void DX11UWA::Sample3DSceneRenderer::LoadOBJFiles() {
 		InstanceObjects.push_back(obj);
 	});
 
+	*/
 
 	//auto finish = 
-	(createVSTask && createPSTask && LoadObj && createInstancedVSTask && createBumpMapTask).then([this]()
+	(createVSTask && LoadObj && createInstancedVSTask && createBumpMapTask).then([this]()
 	{
 		objloadingComplete = true;
 	});
@@ -420,7 +523,7 @@ void DX11UWA::Sample3DSceneRenderer::CreateLights()
 	lights[0].dir = DirectX::XMFLOAT4(1, -1, 0, 0);
 	//World pos, 1 is directional light, on w, doesn't use world pos
 	lights[0].pos = DirectX::XMFLOAT4(0, 0, 0, 1);
-	lights[0].color = DirectX::XMFLOAT4(.5, .5, 0, 0);
+	lights[0].color = DirectX::XMFLOAT4(1,1,1, 0);
 	lights[0].radius = DirectX::XMFLOAT4(0, 0, 0, 0);
 
 
@@ -474,13 +577,15 @@ void DX11UWA::Sample3DSceneRenderer::UpdateLights(const DX::StepTimer &time)
 	elpsTime += time.GetElapsedSeconds();
 	float angle = (((elpsTime * 100)));
 	//1 rotation per 2 seconds.
-	angle = angle * XM_PI / 180.0f;
+
+	angle = angle * XM_PI / 540.0f;
 
 	lights[0].dir.x = cosf(angle);
 	lights[0].dir.y = sinf(angle);
-	lights[0].pos.x = -1*cosf(angle);
-	lights[0].pos.y = -1*sinf(angle);
-
+	lights[0].pos.x = -5 * cosf(angle);
+	lights[0].pos.y = -5 * sinf(angle);
+	angle = (((elpsTime * 100)));
+	angle = angle * XM_PI / 180.0f;
 	lights[1].pos.x = cosf(angle);
 	lights[1].pos.y = sinf(angle);
 
@@ -519,7 +624,7 @@ void DX11UWA::Sample3DSceneRenderer::UpdateLights(const DX::StepTimer &time)
 	}
 
 	if (lightsOn[0])
-		lights[0].color = DirectX::XMFLOAT4(.5, .5, 0, 0);
+		lights[0].color = DirectX::XMFLOAT4(1,1,1, 0);
 	else
 		lights[0].color = DirectX::XMFLOAT4(0, 0, 0, 0);
 
@@ -594,8 +699,8 @@ void DX11UWA::Sample3DSceneRenderer::RenderToShadow()
 	context->ClearDepthStencilView(DSVShadowMap.p, D3D11_CLEAR_DEPTH, 1, 0);
 
 	XMVECTORF32 pos = { lights[0].pos.x, lights[0].pos.y, lights[0].pos.z,0.0f };
-	XMVECTORF32 at = {0.0f, -0.1f, 0.0f, 0.0f};
-	XMVECTORF32 up = {0.0f, 1.0f, 0.0f, 0.0f };
+	XMVECTORF32 at = { 0.0f, -0.1f, 0.0f, 0.0f };
+	XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
 
 	XMMATRIX camMat = XMMatrixLookAtLH(pos, at, up);
 	//render the whole scene using the light view/proj
@@ -619,6 +724,8 @@ void DX11UWA::Sample3DSceneRenderer::RenderToShadow()
 	UINT stride = sizeof(VertexPositionUVNormal);
 	UINT offset = 0;
 
+	//Retired
+	/*
 	//Draw my custom indexed objects
 	XMMATRIX temp1, temp2;
 	for (int i = 0; i < renderObjects.size(); i++)
@@ -654,7 +761,7 @@ void DX11UWA::Sample3DSceneRenderer::RenderToShadow()
 		// Draw the objects. Number of Tri's
 		context->DrawIndexed(renderObjects[i].indexes.size(), 0, 0);
 	}
-
+	*/
 
 	////Draw my Instanced Indexed Objects
 	for (int i = 0; i < InstanceObjects.size(); ++i) {
@@ -668,7 +775,7 @@ void DX11UWA::Sample3DSceneRenderer::RenderToShadow()
 		context->IASetVertexBuffers(0, 1, &(InstanceObjects[i].vertexBuffer.p), &stride, &offset);
 
 		// Each index is one 16-bit unsigned integer (short).
-		context->IASetIndexBuffer((InstanceObjects[i].indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
+		context->IASetIndexBuffer((InstanceObjects[i].indexBuffer.p), DXGI_FORMAT_R32_UINT, 0);
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		context->IASetInputLayout(objinputLayout.p);
 
@@ -806,6 +913,9 @@ void Sample3DSceneRenderer::Render(void)
 
 	//Draw my custom indexed objects
 	XMMATRIX temp1, temp2;
+
+	//draw shadow depth buffer
+	/*
 	//render shadow plane
 	temp1 = XMLoadFloat4x4(&shadowMapObj.transform->Scale);
 	temp2 = XMLoadFloat4x4(&shadowMapObj.transform->Rotation);
@@ -842,8 +952,10 @@ void Sample3DSceneRenderer::Render(void)
 
 	// Draw the objects. Number of Tri's
 	context->DrawIndexed(shadowMapObj.indexes.size(), 0, 0);
+	*/
 
-
+	//Retired render loop
+	/*
 	for (int i = 0; i < renderObjects.size(); i++)
 	{
 		temp1 = XMLoadFloat4x4(&renderObjects[i].transform->Scale);
@@ -902,6 +1014,7 @@ void Sample3DSceneRenderer::Render(void)
 		// Draw the objects. Number of Tri's
 		context->DrawIndexed(renderObjects[i].indexes.size(), 0, 0);
 	}
+	*/
 
 
 	//Draw my Instanced Indexed Objects
@@ -918,7 +1031,7 @@ void Sample3DSceneRenderer::Render(void)
 		context->IASetVertexBuffers(0, 1, &(InstanceObjects[i].vertexBuffer.p), &stride, &offset);
 
 		// Each index is one 16-bit unsigned integer (short).
-		context->IASetIndexBuffer((InstanceObjects[i].indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
+		context->IASetIndexBuffer((InstanceObjects[i].indexBuffer.p), DXGI_FORMAT_R32_UINT, 0);
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		context->IASetInputLayout(objinputLayout.p);
 
@@ -933,19 +1046,40 @@ void Sample3DSceneRenderer::Render(void)
 			context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 
 		}
+		else if (InstanceObjects[i].constBumpMapBuffer == NULL) {
+			// Attach our pixel shader.
+			if (InstanceObjects[i].constTrollBuffer != NULL) {
+
+				context->PSSetShader(objTrollPS.p, nullptr, 0);
+				context->PSSetSamplers(0, 1, &InstanceObjects[i].sampState.p);
+				context->PSSetShaderResources(0, 1, &InstanceObjects[i].constTextureBuffer.p);
+				context->PSSetShaderResources(1, 1, &SRVShadowMap.p);
+				context->PSSetShaderResources(2, 1, &InstanceObjects[i].constTrollBuffer.p);
+
+				context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
+			}
+			else {
+				context->PSSetShader(objpixelShader.p, nullptr, 0);
+				context->PSSetSamplers(0, 1, &InstanceObjects[i].sampState.p);
+				context->PSSetShaderResources(0, 1, &InstanceObjects[i].constTextureBuffer.p);
+				context->PSSetShaderResources(1, 1, &SRVShadowMap.p);
+
+				context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
+			}
+		} 
 		else {
 			// Attach our pixel shader.
-			context->PSSetShader(objpixelShader.p, nullptr, 0);
+			context->PSSetShader(objBMPixelShader.p, nullptr, 0);
 			context->PSSetSamplers(0, 1, &InstanceObjects[i].sampState.p);
-
 			context->PSSetShaderResources(0, 1, &InstanceObjects[i].constTextureBuffer.p);
-			context->PSSetShaderResources(1, 1, &SRVShadowMap.p);
+			context->PSSetShaderResources(1, 1, &InstanceObjects[i].constBumpMapBuffer.p);
+			context->PSSetShaderResources(2, 1, &SRVShadowMap.p);
+
 			context->PSSetConstantBuffers(0, 1, &m_lightBuffer.p);
 			//context->psset
 		}
-
 		// Draw the objects. Number of Tri's
-		//context->DrawIndexedInstanced(InstanceObjects[i].indexes.size(), InstanceObjects[i].InstanceCnt, 0, 0, 0);
+		context->DrawIndexedInstanced(InstanceObjects[i].indexes.size(), InstanceObjects[i].InstanceCnt, 0, 0, 0);
 	}
 
 	for (int i = 0; i < lightModels.size(); ++i) {
@@ -959,7 +1093,7 @@ void Sample3DSceneRenderer::Render(void)
 		context->IASetVertexBuffers(0, 1, &(lightModels[i].vertexBuffer.p), &stride, &offset);
 
 		// Each index is one 16-bit unsigned integer (short).
-		context->IASetIndexBuffer((lightModels[i].indexBuffer.p), DXGI_FORMAT_R16_UINT, 0);
+		context->IASetIndexBuffer((lightModels[i].indexBuffer.p), DXGI_FORMAT_R32_UINT, 0);
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);//D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		context->IASetInputLayout(objinputLayout.p);
 
@@ -967,11 +1101,11 @@ void Sample3DSceneRenderer::Render(void)
 		//context->VSSetShader(instanceVertexShader.p, nullptr, 0);
 		context->VSSetShader(m_GeoVertexShader.p, nullptr, 0);
 		// Send the constant buffer to the graphics device.
+		context->GSSetShader(m_GeoShader.p, nullptr, 0);
 		context->GSSetConstantBuffers1(0, 1, &m_InstanceConstBuffer.p, nullptr, nullptr);
 
 		//context->PSSetShader(NULL, nullptr, 0);
 		context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
-		context->GSSetShader(m_GeoShader.p, nullptr, 0);
 
 
 		// Draw the objects. Number of Tri's
@@ -992,10 +1126,16 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	auto loadVSGeoTask = DX::ReadDataAsync(L"ForwardToGeoVertexShader.cso");
 	auto loadVSShadowTask = DX::ReadDataAsync(L"ShadowVSShader.cso");
 	auto loadPSShadowTask = DX::ReadDataAsync(L"DrawShadowMapPixelShader.cso");
+	auto loadTrollShader = DX::ReadDataAsync(L"TrollPixelShader.cso");
 	// After the vertex shader file is loaded, create the shader and input layout.
 	auto createVSShadowTask = loadVSShadowTask.then([this](const std::vector<byte>& fileData)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &m_ShadowShader.p));
+	});
+
+	auto createtrollTask = loadTrollShader.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &objTrollPS.p));
 	});
 	auto createPSShadowTask = loadPSShadowTask.then([this](const std::vector<byte>& fileData)
 	{
@@ -1101,7 +1241,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	});
 
 	// Once the cube is loaded, the object is ready to be rendered.
-	(createMyStuff && createGSTase && createVSShadowTask).then([this]()
+	(createMyStuff && createGSTase && createVSShadowTask && createtrollTask && createPSShadowTask && createGeoVSTask).then([this]()
 	{
 		m_loadingComplete = true;
 	});

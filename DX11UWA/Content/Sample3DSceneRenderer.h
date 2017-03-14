@@ -57,6 +57,7 @@ namespace DX11UWA
 		CComPtr<ID3D11InputLayout> objinputLayout;
 		CComPtr<ID3D11VertexShader>	objvertexShader;
 		CComPtr<ID3D11PixelShader>	objpixelShader;
+		
 		CComPtr<ID3D11PixelShader>	objBMPixelShader;
 		CComPtr<ID3D11GeometryShader> m_GeoShader;
 		CComPtr<ID3D11VertexShader>	m_GeoVertexShader;
@@ -73,6 +74,7 @@ namespace DX11UWA
 		
 		CComPtr<ID3D11DepthStencilView> DSVShadowMap;
 		CComPtr<ID3D11ShaderResourceView> SRVShadowMap;
+		CComPtr<ID3D11PixelShader>	objTrollPS;
 
 		std::vector<Light> lights;
 		DirectX::XMMATRIX lightProj;
@@ -97,8 +99,8 @@ namespace DX11UWA
 		uint32	m_indexCount;
 
 		// Variables used with the rendering loop.
-		bool	m_loadingComplete;
-		bool	objloadingComplete;
+		bool	m_loadingComplete=false;
+		bool	objloadingComplete=false;
 		float	m_degreesPerSecond;
 		bool	m_tracking;
 		// Data members for keyboard and mouse input
