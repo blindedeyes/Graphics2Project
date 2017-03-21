@@ -112,9 +112,6 @@
     <Image Include="Assets\StoreLogo.png">
       <Filter>Assets</Filter>
     </Image>
-    <Image Include="Assets\Dankey_Kang.dds">
-      <Filter>Assets</Filter>
-    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -151,6 +148,7 @@
     <None Include="Assets\TerrainColor.dds" />
     <None Include="Assets\TerrainNormal.dds" />
     <None Include="Assets\Terrain.obj" />
+    <None Include="Assets\Dankey_Kang.dds" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Content\SamplePixelShader.hlsl">
@@ -187,6 +185,15 @@
       <Filter>Content\Shaders</Filter>
     </FxCompile>
     <FxCompile Include="SkyboxPixelShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="ParticleComputeShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="EmptyVertexShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="ParticleGeoShader.hlsl">
       <Filter>Content\Shaders</Filter>
     </FxCompile>
   </ItemGroup>

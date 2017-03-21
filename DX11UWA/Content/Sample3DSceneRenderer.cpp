@@ -300,7 +300,7 @@ void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 	skybox.indexes.push_back(1);
 	skybox.indexes.push_back(6);
 	skybox.indexes.push_back(2);
-	
+
 	skybox.CalcTangents();
 	skybox.SetupVertexBuffers(m_deviceResources.get());
 	skybox.SetupIndexBuffer(m_deviceResources.get());
@@ -335,7 +335,7 @@ void DX11UWA::Sample3DSceneRenderer::CreatePlane()
 
 	shadowMapObj.SetupIndexBuffer(m_deviceResources.get());
 
-	XMStoreFloat4x4( &shadowMapObj.transform->Position, XMMatrixTranslation(0, 4, 0));
+	XMStoreFloat4x4(&shadowMapObj.transform->Position, XMMatrixTranslation(0, 4, 0));
 
 	//obj.Position._42 = -.5f;
 	//renderObjects.push_back(obj);
@@ -719,6 +719,125 @@ void DX11UWA::Sample3DSceneRenderer::UpdateLights(const DX::StepTimer &time)
 	XMStoreFloat4x4(&lightModels[0].transform[1].Scale, XMMatrixScaling(.2f, .2f, .2f));
 }
 
+void DX11UWA::Sample3DSceneRenderer::SetupParticleSystem()
+{
+	srand((unsigned int)time);
+	//Setup the buffers and such used for particle system.
+	for (int i = 0; i < sizeof(particleData) / sizeof(VertexPositionUVNormal); ++i) {
+		particleData[i].pos = XMFLOAT3(((rand() % 2000) - 1000) / 100.0f, ((rand() % 2000) - 1000) / 100.0f, ((rand() % 2000) - 1000) / 100.0f);
+		particleData[i].uv = XMFLOAT3(1, 1, 1);
+		particleData[i].normal = XMFLOAT3(-.0003f, -.0001f, -.0002f);
+	}
+	D3D11_BUFFER_DESC desc;
+	desc.ByteWidth = sizeof(particleData); //total elements
+	desc.StructureByteStride = sizeof(VertexPositionUVNormal); //element size
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE | D3D11_CPU_ACCESS_READ;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+
+	D3D11_SUBRESOURCE_DATA data;
+	data.pSysMem = &particleData;
+	data.SysMemPitch = 0;
+	data.SysMemSlicePitch = 0;
+
+	m_deviceResources->GetD3DDevice()->CreateBuffer(&desc, &data, &csUAVBuffer.p);
+
+	D3D11_BUFFER_DESC newDesc;
+	csUAVBuffer->GetDesc(&newDesc);
+	D3D11_UNORDERED_ACCESS_VIEW_DESC descV;
+	descV.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+	descV.Buffer.FirstElement = 0;
+	descV.Format = DXGI_FORMAT_UNKNOWN;
+	descV.Buffer.NumElements = sizeof(particleData) / sizeof(VertexPositionUVNormal);
+	descV.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_COUNTER;
+	m_deviceResources->GetD3DDevice()->CreateUnorderedAccessView(csUAVBuffer.p, &descV, &csUAVBufferView.p);
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+	memset(&srvDesc, 0, sizeof(srvDesc));
+	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	//srvDesc.Buffer.FirstElement = 0;
+	srvDesc.Buffer.NumElements = sizeof(particleData) / sizeof(VertexPositionUVNormal);
+	/*D3D11_BUFFER_DESC vdesc;
+	memset(&vdesc, 0, sizeof(vdesc));
+	vdesc.ByteWidth = sizeof(particleData);
+	vdesc.Usage = D3D11_USAGE_DYNAMIC;
+	vdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	vdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+*/
+
+	/*D3D11_SUBRESOURCE_DATA vdata;
+	memset(&vdata, 0, sizeof(vdata));
+	vdata.pSysMem = &particleData;
+	vdata.SysMemPitch = 0;
+	vdata.SysMemSlicePitch = 0;
+*/
+	//m_deviceResources->GetD3DDevice()->CreateBuffer(&vdesc, &vdata, &m_vertexParticleBuffer.p);
+	m_deviceResources->GetD3DDevice()->CreateShaderResourceView(csUAVBuffer.p, &srvDesc, &csSRVBuffer.p);
+
+	//csUAVBufferView
+
+}
+
+void DX11UWA::Sample3DSceneRenderer::RenderParticleSystem() {
+
+	XMStoreFloat4x4(&m_InstanceBufferData.model[0], XMMatrixTranspose(XMLoadFloat4x4(&m_camera)));// *renderObjects[i].Position);
+
+	ID3D11UnorderedAccessView * uavnull = NULL;
+	ID3D11ShaderResourceView * srvnull = NULL;
+	auto context = m_deviceResources->GetD3DDeviceContext();
+	context->UpdateSubresource1(m_InstanceConstBuffer.p, 0, NULL, &m_InstanceBufferData, 0, 0, 0);
+	context->CSSetShader(m_ParticleCS.p, nullptr, 0);
+	context->CSSetUnorderedAccessViews(0, 1, &csUAVBufferView.p, NULL);
+	context->CSSetConstantBuffers(0, 1, &m_InstanceConstBuffer.p);
+	context->Dispatch(16, 25, 2);
+
+	//D3D11_MAPPED_SUBRESOURCE ms1, ms2;
+	//context->Map(csUAVBuffer.p, NULL, D3D11_MAP_READ_WRITE, NULL, &ms1);   // map the buffer
+	////memcpy(&particleData, ms1.pData, sizeof(particleData));           // copy the data
+	//context->Map(m_vertexParticleBuffer.p, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms2);   // map the buffer
+	//memcpy(ms2.pData, ms1.pData, sizeof(particleData));           // copy the data
+	//context->Unmap(csUAVBuffer.p, NULL);
+	//context->Unmap(m_vertexParticleBuffer.p, NULL);
+
+	context->CSSetShader(NULL, NULL, 0);
+	context->CSSetUnorderedAccessViews(0, 1, &uavnull, NULL);
+
+	XMStoreFloat4x4(&m_InstanceBufferData.model[0], XMMatrixIdentity());// *renderObjects[i].Position);
+
+
+	context->UpdateSubresource1(m_InstanceConstBuffer.p, 0, NULL, &m_InstanceBufferData, 0, 0, 0);
+	// Each vertex is one instance of the VertexPositionColor struct.
+
+	UINT stride = sizeof(VertexPositionUVNormal);
+	UINT offset = 0;
+
+	ID3D11Buffer * nulb = NULL;
+	context->IASetVertexBuffers(0, 1, &nulb, &stride, &offset);
+
+	// Each index is one 16-bit unsigned integer (short).
+	//context->IASetIndexBuffer((lightModels[i].indexBuffer.p), DXGI_FORMAT_R32_UINT, 0);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);//D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->IASetInputLayout(objinputLayout.p);
+
+	// Attach our vertex shader.
+	//context->VSSetShader(instanceVertexShader.p, nullptr, 0);
+	context->VSSetShader(m_EmptyVertexShader.p, nullptr, 0);
+	// Send the constant buffer to the graphics device.
+	context->GSSetShader(m_ParticleGeoShader.p, nullptr, 0);
+	context->GSSetConstantBuffers1(0, 1, &m_InstanceConstBuffer.p, nullptr, nullptr);
+	context->GSSetShaderResources(0, 1, &csSRVBuffer.p);
+	//context->PSSetShader(NULL, nullptr, 0);
+	context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+
+
+	// Draw the objects. Number of Tri's
+	context->DrawInstanced(800, 1, 0, 0);//sizeof(particleData) / sizeof(VertexPositionUVNormal), 1, 0, 0);
+	context->GSSetShaderResources(0, 1, &srvnull);
+
+}
+
 bool DX11UWA::Sample3DSceneRenderer::OnButtonPress(char c)
 {
 	if (m_kbuttons[c] & !m_Prevbuttons[c]) {
@@ -965,7 +1084,7 @@ void Sample3DSceneRenderer::Render(void)
 
 
 	//update the constant buffer with specific objects rotation, and orientation
-	XMStoreFloat4x4(&m_constantBufferData.model, 	XMMatrixTranspose(XMMatrixTranslation(m_camera._41, m_camera._42, m_camera._43)));// *renderObjects[i].Position);
+	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(m_camera._41, m_camera._42, m_camera._43)));// *renderObjects[i].Position);
 																		   // Prepare the constant buffer to send it to the graphics device.
 	context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
 	// Each vertex is one instance of the VertexPositionColor struct.
@@ -984,7 +1103,7 @@ void Sample3DSceneRenderer::Render(void)
 	context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
 
 	context->PSSetShader(skyboxPShader.p, nullptr, 0);
-	context->PSSetShaderResources(0,1,&skybox.constTextureBuffer.p);
+	context->PSSetShaderResources(0, 1, &skybox.constTextureBuffer.p);
 	context->PSSetSamplers(0, 1, &skybox.sampState.p);
 	context->GSSetShader(NULL, nullptr, 0);
 
@@ -994,7 +1113,7 @@ void Sample3DSceneRenderer::Render(void)
 	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH, 1, 0);
 
 	//draw shadow depth buffer
-	
+
 	//render shadow plane
 	temp1 = XMLoadFloat4x4(&shadowMapObj.transform->Scale);
 	temp2 = XMLoadFloat4x4(&shadowMapObj.transform->Rotation);
@@ -1031,7 +1150,7 @@ void Sample3DSceneRenderer::Render(void)
 
 	// Draw the objects. Number of Tri's
 	context->DrawIndexed(shadowMapObj.indexes.size(), 0, 0);
-	
+
 
 	//Retired render loop
 	/*
@@ -1103,9 +1222,9 @@ void Sample3DSceneRenderer::Render(void)
 			XMStoreFloat4x4(&m_InstanceBufferData.model[j], XMMatrixTranspose(InstanceObjects[i].transform[j].MultTransform()));// *renderObjects[i].Position);
 
 
-																			   // Prepare the constant buffer to send it to the graphics device.
 		context->UpdateSubresource1(m_InstanceConstBuffer.p, 0, NULL, &m_InstanceBufferData, 0, 0, 0);
-		// Each vertex is one instance of the VertexPositionColor struct.
+		// Prepare the constant buffer to send it to the graphics device.
+// Each vertex is one instance of the VertexPositionColor struct.
 
 		context->IASetVertexBuffers(0, 1, &(InstanceObjects[i].vertexBuffer.p), &stride, &offset);
 
@@ -1190,7 +1309,7 @@ void Sample3DSceneRenderer::Render(void)
 		// Draw the objects. Number of Tri's
 		context->DrawIndexedInstanced(lightModels[i].indexes.size(), lightModels[i].InstanceCnt, 0, 0, 0);
 	}
-
+	RenderParticleSystem();
 }
 
 void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
@@ -1207,20 +1326,40 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	auto loadPSShadowTask = DX::ReadDataAsync(L"DrawShadowMapPixelShader.cso");
 	auto loadTrollShader = DX::ReadDataAsync(L"TrollPixelShader.cso");
 	auto loadSkyboxShader = DX::ReadDataAsync(L"SkyboxPixelShader.cso");
+	auto loadCSShader = DX::ReadDataAsync(L"ParticleComputeShader.cso");
+	auto loadEmptyShader = DX::ReadDataAsync(L"EmptyVertexShader.cso");
+	auto loadpartGeoTask = DX::ReadDataAsync(L"ParticleGeoShader.cso");
+
+
+	
 	// After the vertex shader file is loaded, create the shader and input layout.
 	auto createVSShadowTask = loadVSShadowTask.then([this](const std::vector<byte>& fileData)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &m_ShadowShader.p));
 	});
 
+	auto createEmptyShaderTask = loadEmptyShader.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &m_EmptyVertexShader.p));
+	});
+
+
+	auto createCSTask = loadCSShader.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateComputeShader(&fileData[0], fileData.size(), nullptr, &m_ParticleCS.p));
+	});
+
+
 	auto createtrollTask = loadTrollShader.then([this](const std::vector<byte>& fileData)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &objTrollPS.p));
 	});
+
 	auto createPSShadowTask = loadPSShadowTask.then([this](const std::vector<byte>& fileData)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &m_ShadowPShader.p));
 	});
+
 	auto createSkyboxShader = loadSkyboxShader.then([this](const std::vector<byte>& fileData)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &skyboxPShader.p));
@@ -1252,6 +1391,12 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	auto createGSTase = loadGSTask.then([this](const std::vector<byte>& fileData) {
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateGeometryShader(&fileData[0], fileData.size(), nullptr, &m_GeoShader.p));
 	});
+
+	auto createPartGSTask = loadpartGeoTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateGeometryShader(&fileData[0], fileData.size(), nullptr, &m_ParticleGeoShader.p));
+	});
+
+
 	auto createGeoVSTask = loadVSGeoTask.then([this](const std::vector<byte>& fileData) {
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &m_GeoVertexShader.p));
 
@@ -1321,11 +1466,11 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		LoadOBJFiles();
 		CreateLights();
 
-
+		SetupParticleSystem();
 	});
 
 	// Once the cube is loaded, the object is ready to be rendered.
-	(createMyStuff && createGSTase && createVSShadowTask && createtrollTask && createPSShadowTask && createGeoVSTask && createSkyboxShader).then([this]()
+	(createCSTask&&createMyStuff && createGSTase && createVSShadowTask && createtrollTask && createPSShadowTask && createGeoVSTask && createSkyboxShader && createEmptyShaderTask && createPartGSTask).then([this]()
 	{
 		m_loadingComplete = true;
 	});

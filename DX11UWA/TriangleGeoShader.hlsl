@@ -42,17 +42,23 @@ void main(
     
     element[0].pos = float4(input[0].pos.xyz, 1);
     element[0].uv = input[0].uv;
+    element[0].normal = float3(0, 0, 0);
 
-    element[1].pos = element[0].pos;
-    element[1].uv = input[0].uv;
+    element[0].worldPos = float4(0, 0, 0, 0);
+
+    element[0].Tangent = float4(0, 0, 0, 0);
+
+    element[0].bTangent = float4(0, 0, 0, 0);
+
+    element[0].lPos = float4(0, 0, 0, 0);
+
+    element[1] = element[0];
+    element[2] = element[0];
     
-    element[2].pos = element[0].pos;
-    element[2].uv = input[0].uv;
 
-
-    element[0].pos.y += .5f;
-    element[1].pos.x += .3f;
-    element[2].pos.x -= .3f;
+    element[0].pos.y += .25f;
+    element[1].pos.x += .15f;
+    element[2].pos.x -= .15f;
     
     float4 pos = element[0].pos;
 
@@ -61,6 +67,7 @@ void main(
     pos = mul(pos, projection);
 
     element[0].pos = pos;
+    element[0].normal = float3(0, 0, -1);
 /*
     element[0].lPos = input[0].pos;
     element[0].lPos = mul(element[0].lPos, model[input[0].instID]); //mul(model[input[0].instID], mul(lightView, lightProj)));
@@ -76,6 +83,7 @@ void main(
     pos = mul(pos, projection);
 
     element[1].pos = pos;
+    element[2].normal = float3(0, 0, -1);
 
 /*  
     element[1].lPos = input[0].pos;
@@ -92,6 +100,8 @@ void main(
 
 
     element[2].pos = pos;
+    element[2].normal = float3(0, 0, -1);
+
 /*
     element[2].lPos = input[0].pos;
     element[2].lPos = mul(element[2].lPos, model[input[0].instID]); //mul(model[input[0].instID], mul(lightView, lightProj)));

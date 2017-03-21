@@ -38,6 +38,8 @@ namespace DX11UWA
 		void LoadOBJFiles();
 		void CreateLights();
 		void UpdateLights(const DX::StepTimer& time);
+		void SetupParticleSystem();
+		void RenderParticleSystem();
 	private:
 		DirectX::XMMATRIX camProjMat;
 		// Cached pointer to device resources.
@@ -51,28 +53,35 @@ namespace DX11UWA
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	m_pixelShader;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_constantBuffer;
 		bool camSetUp = false;
-
+		CComPtr<ID3D11ComputeShader> m_ParticleCS;
+		CComPtr<ID3D11Buffer>	csUAVBuffer;
+		CComPtr<ID3D11UnorderedAccessView>	csUAVBufferView;
+		CComPtr<ID3D11ShaderResourceView>	csSRVBuffer;
+		
 
 		//Shaders for RenderObjects
 		CComPtr<ID3D11InputLayout> objinputLayout;
 		CComPtr<ID3D11VertexShader>	objvertexShader;
 		CComPtr<ID3D11PixelShader>	objpixelShader;
-		
+
 		CComPtr<ID3D11PixelShader>	objBMPixelShader;
 		CComPtr<ID3D11GeometryShader> m_GeoShader;
+		CComPtr<ID3D11GeometryShader> m_ParticleGeoShader;
+		
 		CComPtr<ID3D11VertexShader>	m_GeoVertexShader;
+		CComPtr<ID3D11VertexShader>	m_EmptyVertexShader;
 		CComPtr<ID3D11VertexShader>	m_ShadowShader;
 		CComPtr<ID3D11PixelShader>	m_ShadowPShader;
 		CComPtr<ID3D11PixelShader>	skyboxPShader;
 
-		
+
 		RenderObject shadowMapObj;
-		
+
 		//Light data
 		bool lightsOn[4];
 		CComPtr<ID3D11Buffer>	m_lightBuffer;
 		CComPtr<ID3D11Texture2D> lightShadowMap;
-		
+
 		CComPtr<ID3D11DepthStencilView> DSVShadowMap;
 		CComPtr<ID3D11ShaderResourceView> SRVShadowMap;
 		CComPtr<ID3D11PixelShader>	objTrollPS;
@@ -80,6 +89,9 @@ namespace DX11UWA
 		std::vector<Light> lights;
 		DirectX::XMMATRIX lightProj;
 
+		//Particle data
+		CComPtr<ID3D11Buffer> m_vertexParticleBuffer;
+		VertexPositionUVNormal particleData[800];
 
 		CComPtr<ID3D11InputLayout>  instanceInputLayout;
 		CComPtr<ID3D11VertexShader>	instanceVertexShader;
@@ -94,15 +106,15 @@ namespace DX11UWA
 		std::vector<RenderObject> InstanceObjects;
 
 		//elps time for light movement
-		float elpsTime=0;
+		float elpsTime = 0;
 
 		// System resources for cube geometry.
 		ModelViewProjectionConstantBuffer	m_constantBufferData;
 		uint32	m_indexCount;
 
 		// Variables used with the rendering loop.
-		bool	m_loadingComplete=false;
-		bool	objloadingComplete=false;
+		bool	m_loadingComplete = false;
+		bool	objloadingComplete = false;
 		float	m_degreesPerSecond;
 		bool	m_tracking;
 		// Data members for keyboard and mouse input
