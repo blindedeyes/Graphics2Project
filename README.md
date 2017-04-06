@@ -9,3 +9,8 @@
 4- Toggle Ambient Light
 
 0- Reset all lights
+
+
+wasd - move camera
+
+right click rotated camera
