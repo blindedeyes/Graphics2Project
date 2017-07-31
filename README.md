@@ -16,7 +16,8 @@ wasd - move camera
 right click rotated camera
 
 
-Check Screen shot file for example of what it does.
+
+![Screen Shot of application](https://github.com/blindedeyes/Graphics2Project/blob/master/ScreenShotOfGraphics2.png?raw=true)
 
 Contains multitexturing, normal maps, shadow mapping for directional light, as well as multiple light sources in scene.
 
