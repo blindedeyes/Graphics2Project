@@ -19,3 +19,5 @@ right click rotated camera
 Check Screen shot file for example of what it does.
 
 Contains multitexturing, normal maps, shadow mapping for directional light, as well as multiple light sources in scene.
+
+The white triangles are particles calculated basic movement using computer shader, and rendered using the geometry shader.
